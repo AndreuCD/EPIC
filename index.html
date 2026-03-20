@@ -434,10 +434,14 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-ev
   <div style="max-width:540px;margin:18px auto;background:linear-gradient(180deg,rgba(28,16,0,.99),rgba(12,6,0,.99));border:3px solid #c8a040;border-radius:22px;padding:22px 18px;position:relative">
     <button id="coliseum-close" class="btn btn-ghost" style="position:absolute;top:12px;right:12px;font-size:.8rem;padding:4px 10px">✕</button>
 
-    <div style="text-align:center;margin-bottom:16px">
+    <div style="text-align:center;margin-bottom:14px">
       <div style="font-size:2.2rem">🏟</div>
       <div style="font-family:'Lilita One',cursive;font-size:1.5rem;color:#f0c040">El Coliseo</div>
       <div style="font-size:.74rem;color:rgba(255,255,255,.38);margin-top:2px">Multijugador real · WebRTC P2P</div>
+      <div style="display:flex;gap:8px;justify-content:center;align-items:center;margin-top:10px">
+        <span style="font-size:.72rem;color:rgba(255,255,255,.4)">Tu nombre:</span>
+        <input id="coli-name-input" class="cheat-input" style="width:140px;font-size:.85rem;padding:6px 12px" maxlength="16" placeholder="Tu apodo…" autocomplete="off"/>
+      </div>
     </div>
 
     <!-- Team builder -->
@@ -3846,6 +3850,11 @@ function showColiseumOverlay(){
   document.getElementById('coli-fight-btn').disabled=true;
   coliSetStatus('Elige tu equipo y crea o únete a una sala','#aaa');
 
+  // Set default name from saved value
+  if(!COLI.myName)COLI.myName='Jugador';
+  const nameInput=document.getElementById('coli-name-input');
+  if(nameInput){nameInput.value=COLI.myName;nameInput.oninput=()=>{COLI.myName=nameInput.value.trim()||'Jugador';};}
+
   let active=GS.unlockedBirds.slice(0,3);
   let reserve=GS.unlockedBirds.slice(3);
 
@@ -3911,29 +3920,44 @@ function showColiseumOverlay(){
   }
 
   /* ── Connection handler ── */
+  // SINGLE data router — swap COLI._onData to change mode
+  COLI._onData=(raw)=>{
+    let msg;try{msg=JSON.parse(raw);}catch{return;}
+    if(msg.type==='team'){showRivalTeam(msg.team);}
+    if(msg.type==='name'){
+      COLI.rivalName=msg.name;
+      const el=document.getElementById('coli-rival-info');
+      if(el)el.textContent='Rival: '+msg.name;
+    }
+    if(msg.type==='fight_ready'){
+      COLI.rivalReady=true;
+      coliSetStatus('⚔ Rival listo — ¡pulsa Combatir!','#ffe44d');
+      if(COLI.meReady)startColiseumBattle();
+    }
+    // Battle messages — always handled if in battle mode
+    if(msg.type==='coli_action'||msg.type==='coli_end_turn'||msg.type==='coli_result'){
+      if(COLI._battleDataHandler)COLI._battleDataHandler(raw);
+    }
+  };
+
   function setupConn(conn){
     COLI.conn=conn;
     conn.on('open',()=>{
       document.getElementById('coli-phase-connect').style.display='none';
       document.getElementById('coli-phase-ready').style.display='block';
       coliSetStatus('🟢 Conectado','#44ff88');
-      // Send our team immediately
-      // Include gear effects so rival can show accurate stats
-      const effs={};
+      // Send name + team
+      const myName=COLI.myName||'Jugador';
+      const effs={};const weapons={};const armors={};
       COLI.myTeam.active.concat(COLI.myTeam.reserve||[]).forEach(id=>{
         effs[id]=getBirdEff(id);
+        weapons[id]=GS.equippedWeapons[id]||null;
+        armors[id]=GS.equippedArmors[id]||null;
       });
-      coliSend({type:'team',team:{...COLI.myTeam,effs}});
+      coliSend({type:'name',name:myName});
+      coliSend({type:'team',team:{...COLI.myTeam,effs,weapons,armors}});
     });
-    conn.on('data',raw=>{
-      let msg;try{msg=JSON.parse(raw);}catch{return;}
-      if(msg.type==='team'){showRivalTeam(msg.team);}
-      if(msg.type==='fight_ready'){
-        COLI.rivalReady=true;
-        coliSetStatus('⚔ Rival listo — ¡pulsa Combatir!','#ffe44d');
-        if(COLI.meReady)startColiseumBattle();
-      }
-    });
+    conn.on('data',raw=>COLI._onData(raw));
     conn.on('close',()=>{
       coliSetStatus('⚠ Rival desconectado','#ff8844');
       document.getElementById('coli-phase-ready').style.display='none';
@@ -4057,11 +4081,15 @@ function startColiseumBattle(){
     if(!bd)return{name:id,maxHp:100,hp:100,atk:20,def:5,curAtk:20,curDef:5,spDmg:40,spCh:.35,
       spName:'Attack',buffs:[],draw:(cx,x,y,r,bl)=>{}};
     // Use the rival's gear stats
+    const rWeapon=(COLI.rivalTeam.weapons||{})[id]||null;
+    const rArmor=(COLI.rivalTeam.armors||{})[id]||null;
     return{
       ...bd,
       key:'rival_'+id,
       birdId:id,
       isRivalBird:true,
+      rivalWeapon:rWeapon,
+      rivalArmor:rArmor,
       maxHp:bd.maxHp+(e2.maxHp||0),
       hp:bd.maxHp+(e2.maxHp||0),
       atk:bd.atk+(e2.atk||0),
@@ -4098,7 +4126,9 @@ function startColiseumBattle(){
   BIRD_POS=[];ENEMY_POS=[];
   resetRage();
 
-  document.getElementById('b-title').textContent='🏟 Coliseo PvP';
+  const myN=COLI.myName||'Tú';
+  const rivN=COLI.rivalName||'Rival';
+  document.getElementById('b-title').textContent=`🏟 ${myN} vs ${rivN}`;
   document.getElementById('b-wave').textContent=COLI.isHost?'⚔ Turno tuyo':'⏳ Turno del rival';
   BS._turn=0;
   updPotBtn();buildPanels();clearLog();
@@ -4128,9 +4158,9 @@ function startColiseumBattle(){
     if(msg.type==='coli_action'){
       const act=msg.action;
       if(act.kind==='attack'){
-        // Rival's bird[act.birdIdx] hit MY bird[act.targetIdx] for act.dmg
-        const myBird=BS.birds[act.targetIdx];
-        const rivalBird=BS.enemies[act.birdIdx];
+        // Rival's bird[theirBirdIdx] (= my BS.enemies[theirBirdIdx]) hit my bird[myBirdIdx] (= my BS.birds[myBirdIdx])
+        const myBird=BS.birds[act.myBirdIdx];
+        const rivalBird=BS.enemies[act.theirBirdIdx];
         if(!myBird||!rivalBird)return;
         // Apply the EXACT damage the rival calculated (keeps both screens in sync)
         myBird.hp=Math.max(0,myBird.hp-act.dmg);
@@ -4142,7 +4172,7 @@ function startColiseumBattle(){
         screenShake(act.dmg>40?8:4,220);
         const bp2=BIRD_POS[act.targetIdx];
         if(bp2)spawnParts(bp2.x,bp2.y,'#ff8844',act.dmg>40?14:8,'exp');
-        COLI.cbState.rivalBirdsActed.add(act.birdIdx);
+        COLI.cbState.rivalBirdsActed.add(act.theirBirdIdx);
         // Check if I lost
         if(BS.birds.every(b=>!isAlive(b))){
           setTimeout(()=>coliShowResult(false),600);return;
@@ -4165,12 +4195,11 @@ function startColiseumBattle(){
         COLI.cbState.rivalBirdsActed.add(act.fromIdx);
       }
       else if(act.kind==='super'){
-        // Rival used super against my birds
-        const rivalBird=BS.enemies[act.birdIdx];
+        const rivalBird=BS.enemies[act.theirBirdIdx];
         if(!rivalBird)return;
         const targets=act.hitAll
           ?BS.birds.map((b,i)=>({b,i})).filter(x=>isAlive(x.b))
-          :[{b:BS.birds[act.targetIdx],i:act.targetIdx}].filter(x=>x.b);
+          :[{b:BS.birds[act.myBirdIdx],i:act.myBirdIdx}].filter(x=>x.b);
         targets.forEach(({b,i})=>{
           if(!isAlive(b))return;
           b.hp=Math.max(0,b.hp-act.dmg);
@@ -4179,7 +4208,7 @@ function startColiseumBattle(){
           showDmgNum('bp'+i,act.dmg,'dn-s');refreshPlate(b,'bp'+i);
         });
         screenFlash('rgba(200,0,255,.45)',280);
-        COLI.cbState.rivalBirdsActed.add(act.birdIdx);
+        COLI.cbState.rivalBirdsActed.add(act.theirBirdIdx);
         if(BS.birds.every(b=>!isAlive(b))){
           setTimeout(()=>coliShowResult(false),600);return;
         }
@@ -4211,10 +4240,7 @@ function startColiseumBattle(){
       coliShowResult(!msg.iWon);
     }
   };
-  if(COLI.conn){
-    COLI.conn.off('data');
-    COLI.conn.on('data',raw=>COLI._battleDataHandler(raw));
-  }
+  // Handler is already routing via COLI._onData → COLI._battleDataHandler
 
   BS._coliMode=true;
 
@@ -4268,9 +4294,13 @@ function startColiseumBattle(){
       const er=Math.max(1,34*shk.sc); // rival birds same size as player birds
       bcx.save();bcx.globalAlpha=.13;bcx.fillStyle='#000';bcx.beginPath();bcx.ellipse(exBase,H*.71,28,8,0,0,Math.PI*2);bcx.fill();bcx.restore();
       bcx.save();bcx.translate(ex,ey);
-      // Draw rival bird (no armor overlay — we don't have their equip)
-      if(e.birdId&&ALL_BIRDS[e.birdId])ALL_BIRDS[e.birdId].draw(bcx,0,0,er,!blink,0);
-      else e.draw(bcx,0,0,er,!blink,e);
+      if(e.birdId&&ALL_BIRDS[e.birdId]){
+        ALL_BIRDS[e.birdId].draw(bcx,0,0,er,!blink,0);
+        if(e.rivalArmor)drawArmorByRecipe(bcx,er,e.rivalArmor,e.birdId);
+        if(e.rivalWeapon)drawWeaponOnBird(bcx,e.birdId,er,e.rivalWeapon);
+      } else {
+        e.draw(bcx,0,0,er,!blink,e);
+      }
       bcx.restore();
       // Red target ring on rival birds
       if(i===BS.targetIdx&&BS.phase==='player'){
@@ -6551,7 +6581,7 @@ function doAttack(){
       if(d>50)screenFlash('rgba(255,220,0,.4)',120);
       const ep3=ENEMY_POS[enemyIdx];if(ep3)spawnParts(ep3.x,ep3.y,'#ff8844',d>40?14:8,'exp');
       // PvP: send attack to rival
-      if(BS._coliMode)coliSend({type:'coli_action',action:{kind:'attack',birdIdx,targetIdx:enemyIdx,dmg:d}});
+      if(BS._coliMode)coliSend({type:'coli_action',action:{kind:'attack',myBirdIdx:birdIdx,theirBirdIdx:enemyIdx,dmg:d}});
     },
     ()=>{// onDone
       if(checkWin())return;ensureEnemy();
@@ -6781,7 +6811,7 @@ function fireSuper(birdIdx){const usedBirdIdx=birdIdx;
         // Send super result to rival — they apply the HP changes on their side
         const spDmg=Math.round(bird.curSpDmg*1.6);
         const hitAll=bird.spEff==='aoe'||bird.spEff==='multienemy';
-        coliSend({type:'coli_action',action:{kind:'super',birdIdx:usedBirdIdx,targetIdx,hitAll,dmg:spDmg}});
+        coliSend({type:'coli_action',action:{kind:'super',theirBirdIdx:usedBirdIdx,myBirdIdx:targetIdx,hitAll,dmg:spDmg}});
         markActed(usedBirdIdx,320);
       } else {
         setTimeout(doEnemyTurn,320);
