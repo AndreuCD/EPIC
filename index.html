@@ -3929,15 +3929,12 @@ function showColiseumOverlay(){
       const el=document.getElementById('coli-rival-info');
       if(el)el.textContent='Rival: '+msg.name;
     }
-    if(msg.type==='fight_ready'){
-      // Rival sent their final team with fight_ready
-      if(msg.team){COLI.rivalTeam=msg.team;}
-      COLI.rivalReady=true;
-      coliSetStatus('⚔ ¡Rival listo!','#ffe44d');
-      // Enable fight button if we have a rival team
-      const fb=document.getElementById('coli-fight-btn');
-      if(fb&&COLI.rivalTeam)fb.disabled=false;
-      if(COLI.meReady)startColiseumBattle();
+    if(msg.type==='fight_ready'||msg.type==='start_battle'){
+      // Rival clicked fight — update their team and start battle
+      const rivalFinalTeam=msg.myTeam||msg.team;
+      if(rivalFinalTeam)COLI.rivalTeam=rivalFinalTeam;
+      // Start battle on our side
+      if(!BS._coliMode)startColiseumBattle();
     }
     // Battle messages — always handled if in battle mode
     if(msg.type==='coli_action'||msg.type==='coli_end_turn'||msg.type==='coli_result'){
@@ -4031,24 +4028,26 @@ function showColiseumOverlay(){
 
   /* ── FIGHT ── */
   document.getElementById('coli-fight-btn').onclick=()=>{
-    if(!COLI.rivalTeam){coliSetStatus('⚠ Esperando equipo del rival','#ff8844');return;}
+    if(!COLI.rivalTeam||!COLI.rivalTeam.active){
+      coliSetStatus('⚠ Aún no has recibido el equipo del rival','#ff8844');return;
+    }
     if(active.length<3){coliSetStatus('⚠ Elige 3 pájaros','#ff8844');return;}
-    // Update myTeam with current selection before battle
+    if(!COLI.conn||!COLI.conn.open){
+      coliSetStatus('⚠ No estás conectado','#ff8844');return;
+    }
+    // Lock in final team
     COLI.myTeam={active:[...active],reserve:[...reserve]};
-    // Send fight_ready with our final team
     const effs={};const weapons={};const armors={};
     active.forEach(id=>{
       effs[id]=getBirdEff(id);
       weapons[id]=GS.equippedWeapons[id]||null;
       armors[id]=GS.equippedArmors[id]||null;
     });
-    coliSend({type:'fight_ready',team:{...COLI.myTeam,effs,weapons,armors}});
-    COLI.meReady=true;
-    // Also update our team one more time
-    coliSend({type:'team',team:{...COLI.myTeam,effs,weapons,armors}});
-    coliSetStatus('✅ Listo — esperando rival…','#ffe44d');
-    document.getElementById('coli-fight-btn').disabled=true;
-    if(COLI.rivalReady)startColiseumBattle();
+    COLI.myTeam.effs=effs;COLI.myTeam.weapons=weapons;COLI.myTeam.armors=armors;
+    // Tell rival to start (with our final team)
+    coliSend({type:'start_battle',myTeam:COLI.myTeam});
+    // Start immediately on our side too
+    startColiseumBattle();
   };
 
   /* ── DISCONNECT ── */
