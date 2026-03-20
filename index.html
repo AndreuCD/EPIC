@@ -4126,117 +4126,97 @@ function startColiseumBattle(){
     let msg;try{msg=JSON.parse(raw);}catch{return;}
 
     if(msg.type==='coli_action'){
-      // Rival performed an action on their turn — apply it to our screen
       const act=msg.action;
       if(act.kind==='attack'){
-        // Rival's bird (act.birdIdx in their birds) attacks MY bird (act.targetIdx)
+        // Rival's bird[act.birdIdx] hit MY bird[act.targetIdx] for act.dmg
         const myBird=BS.birds[act.targetIdx];
-        if(!myBird||!isAlive(myBird))return;
-        const rivalBird=BS.enemies[act.birdIdx]; // their bird shown as enemy on our screen
-        if(!rivalBird)return;
-        BS.phase='busy';
-        const d=dealDmg(myBird,rivalBird.curAtk||rivalBird.atk||20);
-        addRage(rageFromDmg(d,RAGE_PER_RECV));
-        blog(`⚔ ${rivalBird.name||'Rival'} → ${myBird.name}: ${d} dmg`,'ll-e');
-        showDmgNum('bp'+act.targetIdx,d,'dn-a');
+        const rivalBird=BS.enemies[act.birdIdx];
+        if(!myBird||!rivalBird)return;
+        // Apply the EXACT damage the rival calculated (keeps both screens in sync)
+        myBird.hp=Math.max(0,myBird.hp-act.dmg);
+        addRage(rageFromDmg(act.dmg,RAGE_PER_RECV));
+        blog(`🐷 ${rivalBird.name||'Rival'} → ${myBird.name}: ${act.dmg} dmg`,'ll-e');
+        showDmgNum('bp'+act.targetIdx,act.dmg,'dn-a');
         refreshPlate(myBird,'bp'+act.targetIdx);
-        screenFlash('rgba(255,50,0,.5)',150);
-        screenShake(4,200);
+        screenFlash('rgba(255,50,0,.55)',150);
+        screenShake(act.dmg>40?8:4,220);
         const bp2=BIRD_POS[act.targetIdx];
-        if(bp2)spawnParts(bp2.x,bp2.y,'#ff8844',8,'exp');
+        if(bp2)spawnParts(bp2.x,bp2.y,'#ff8844',act.dmg>40?14:8,'exp');
         COLI.cbState.rivalBirdsActed.add(act.birdIdx);
+        // Check if I lost
+        if(BS.birds.every(b=>!isAlive(b))){
+          setTimeout(()=>coliShowResult(false),600);return;
+        }
       }
       else if(act.kind==='ally'){
-        // Rival healed/buffed one of their own birds (shown as enemy on our screen)
-        const target=BS.enemies[act.toIdx];
-        if(!target)return;
-        if(act.eff==='heal'){
-          const h=Math.min(act.amount,target.maxHp-target.hp);
-          target.hp+=h;refreshPlate(target,'ep'+act.toIdx);
-          blog(`💚 ${target.name} se curó +${h}HP`,'ll-h');
-          const ep2=ENEMY_POS[act.toIdx];if(ep2)spawnHeal(ep2.x,ep2.y,10);
-        } else {
-          blog(`🛡 ${BS.enemies[act.fromIdx]?.name} apoya a ${target.name}`,'ll-ally');
+        // Rival buffed/healed one of their own birds
+        const rivalBird=BS.enemies[act.toIdx];
+        if(rivalBird){
+          if(act.eff==='heal'){
+            const h=Math.min(act.amount||50,rivalBird.maxHp-rivalBird.hp);
+            rivalBird.hp+=h;
+            blog(`💚 ${rivalBird.name} curado +${h}HP`,'ll-h');
+            const ep2=ENEMY_POS[act.toIdx];if(ep2)spawnHeal(ep2.x,ep2.y,10);
+            refreshPlate(rivalBird,'ep'+act.toIdx);
+          } else {
+            blog(`🛡 ${BS.enemies[act.fromIdx]?.name||'Rival'} apoya a ${rivalBird.name}`,'ll-ally');
+          }
         }
         COLI.cbState.rivalBirdsActed.add(act.fromIdx);
       }
       else if(act.kind==='super'){
-        // Rival fired super — hits one or all of my birds
+        // Rival used super against my birds
         const rivalBird=BS.enemies[act.birdIdx];
         if(!rivalBird)return;
-        const targets=act.hitAll?BS.birds.filter((_,i)=>isAlive(BS.birds[i])):
-          [BS.birds[act.targetIdx]].filter(Boolean);
-        targets.forEach((b,i)=>{
+        const targets=act.hitAll
+          ?BS.birds.map((b,i)=>({b,i})).filter(x=>isAlive(x.b))
+          :[{b:BS.birds[act.targetIdx],i:act.targetIdx}].filter(x=>x.b);
+        targets.forEach(({b,i})=>{
           if(!isAlive(b))return;
-          const bi=act.hitAll?BS.birds.indexOf(b):act.targetIdx;
-          const d=dealDmg(b,rivalBird.spDmg||rivalBird.curAtk||30);
-          addRage(rageFromDmg(d,RAGE_PER_RECV*1.2));
-          blog(`💥 ¡SUPER de ${rivalBird.name}! → ${b.name}: ${d} dmg`,'ll-e');
-          showDmgNum('bp'+bi,d,'dn-s');refreshPlate(b,'bp'+bi);
+          b.hp=Math.max(0,b.hp-act.dmg);
+          addRage(rageFromDmg(act.dmg,RAGE_PER_RECV*1.2));
+          blog(`💥 ¡SUPER ${rivalBird.name}! → ${b.name}: ${act.dmg}dmg`,'ll-e');
+          showDmgNum('bp'+i,act.dmg,'dn-s');refreshPlate(b,'bp'+i);
         });
-        screenFlash('rgba(200,0,255,.4)',250);
+        screenFlash('rgba(200,0,255,.45)',280);
         COLI.cbState.rivalBirdsActed.add(act.birdIdx);
-      }
-
-      // Check if rival has acted with all their alive birds → my turn
-      const rivalAlive=BS.enemies.filter(e=>isAlive(e)).length;
-      if(COLI.cbState.rivalBirdsActed.size>=rivalAlive||act.endTurn){
-        COLI.cbState.rivalBirdsActed=new Set();
-        // Check if I'm dead
         if(BS.birds.every(b=>!isAlive(b))){
           setTimeout(()=>coliShowResult(false),600);return;
         }
-        if(BS.enemies.every(e=>!isAlive(e))){
-          setTimeout(()=>coliShowResult(true),600);return;
-        }
-        // My turn
-        setTimeout(()=>{
-          BS.birdsActed=new Set();
-          BS.activeIdx=BS.birds.findIndex(b=>isAlive(b));
-          if(BS.activeIdx<0)BS.activeIdx=0;
-          BS.phase='player';BS._turn=(BS._turn||0)+1;
-          document.getElementById('b-wave').textContent='⚔ Turno tuyo';
-          setTurnUI('player');
-          blog(`🎮 ¡Turno ${BS._turn||1} — tú atacas!`,'ll-sys');
-        },400);
       }
-
-      // Refresh plates
+      // Refresh all plates
       BS.birds.forEach((_,i)=>refreshPlate(BS.birds[i],'bp'+i));
       BS.enemies.forEach((_,i)=>refreshPlate(BS.enemies[i],'ep'+i));
     }
 
     if(msg.type==='coli_end_turn'){
-      // Rival explicitly ended their turn
-      // Same as above but force my turn
+      // Rival ended their turn → now it's MY turn
       COLI.cbState.rivalBirdsActed=new Set();
-      if(BS.birds.every(b=>!isAlive(b))){setTimeout(()=>coliShowResult(false),400);return;}
+      if(BS.birds.every(b=>!isAlive(b))){setTimeout(()=>coliShowResult(false),300);return;}
+      if(BS.enemies.every(e=>!isAlive(e))){setTimeout(()=>coliShowResult(true),300);return;}
       setTimeout(()=>{
         BS.birdsActed=new Set();
         BS.activeIdx=BS.birds.findIndex(b=>isAlive(b));
         if(BS.activeIdx<0)BS.activeIdx=0;
-        BS.phase='player';BS._turn=(BS._turn||0)+1;
+        BS.phase='player';
+        BS._turn=(BS._turn||0)+1;
         document.getElementById('b-wave').textContent='⚔ Turno tuyo';
         setTurnUI('player');
-        blog(`🎮 ¡Turno ${BS._turn||1}!`,'ll-sys');
-      },300);
+        blog(`🎮 ¡Turno ${BS._turn}! Tú atacas.`,'ll-sys');
+      },350);
     }
 
     if(msg.type==='coli_result'){
-      // Rival says the battle ended (they see all my birds dead)
-      coliShowResult(!msg.rivalWon);
+      // Rival's screen says battle ended — mirror the result
+      coliShowResult(!msg.iWon);
     }
   };
-  // Re-attach data handler with battle handler
   if(COLI.conn){
     COLI.conn.off('data');
     COLI.conn.on('data',raw=>COLI._battleDataHandler(raw));
   }
 
-  // ── INTERCEPT markActed TO SEND ACTIONS OVER NETWORK ──
-  // We hook into the existing doAttack/doAllyAction via wrapping coliSend
-  // after each action fires, we also broadcast it
-  BS._coliMode=true; // flag used by patched functions below
+  BS._coliMode=true;
 
   showScreen('battle-screen');
 
@@ -4328,83 +4308,24 @@ function startColiseumBattle(){
   });
 }
 
-// ── PvP-aware doAttack: also send action over network ──
-const _origDoAttack=doAttack;
-function doAttack(){
-  if(!BS._coliMode){_origDoAttack();return;}
-  if(BS.phase!=='player')return;if(!ensureEnemy())return;
-  const birdIdx=BS.activeIdx,enemyIdx=BS.targetIdx;
-  BS.phase='busy';setTurnUI('busy');
-  const bird=BS.birds[birdIdx];const tgt=BS.enemies[enemyIdx];
-  const at=animTypeFor(bird.id,null);
-  playAttackAnim(bird.id,birdIdx,enemyIdx,at,
-    ()=>{
-      const d=dealDmg(tgt,bird.curAtk);
-      GS.totalDamageDealt=(GS.totalDamageDealt||0)+d;
-      addRage(rageFromDmg(d,RAGE_PER_DEALT));
-      blog(`⚔ ${bird.name} → ${tgt.name||'Rival'}: ${d} dmg`,'ll-b');
-      showDmgNum('ep'+enemyIdx,d,'dn-a');refreshPlate(tgt,'ep'+enemyIdx);
-      if(d>50)screenFlash('rgba(255,220,0,.4)',120);
-      const ep3=ENEMY_POS[enemyIdx];if(ep3)spawnParts(ep3.x,ep3.y,'#ff8844',d>40?14:8,'exp');
-      // Send to rival
-      coliSend({type:'coli_action',action:{kind:'attack',birdIdx,targetIdx:enemyIdx,dmg:d}});
-    },
-    ()=>{
-      if(BS.enemies.every(e=>!isAlive(e))){coliShowResult(true);return;}
-      markActed(birdIdx,320);
-    }
-  );
-}
-
-// ── PvP-aware markActed: when all birds acted, tell rival it's their turn ──
-const _origMarkActed=markActed;
-function markActed(birdIdx,delay){
-  if(!BS._coliMode){_origMarkActed(birdIdx,delay);return;}
-  if(!BS.birdsActed)BS.birdsActed=new Set();
-  BS.birdsActed.add(birdIdx);
-  BS.phase='busy';setTurnUI('busy');
-  setTimeout(()=>{
-    const nextIdx=BS.birds.findIndex((b,i)=>isAlive(b)&&!BS.birdsActed.has(i));
-    if(nextIdx>=0){
-      BS.activeIdx=nextIdx;BS.phase='player';setTurnUI('player');
-      blog(`🎮 ${BS.birds[nextIdx].name} actúa!`,'ll-sys');
-    } else {
-      // All my birds acted — send end-turn, wait for rival
-      coliSend({type:'coli_end_turn'});
-      BS.birdsActed=new Set();
-      BS.phase='net-wait';
-      document.getElementById('b-wave').textContent='⏳ Turno del rival';
-      setTurnUI('enemy');
-      blog('⏳ Esperando al rival…','ll-sys');
-    }
-  },delay||280);
-}
-
-// ── End Turn button in PvP ──
-const _origStartEnemyTurn=startEnemyTurn;
-function startEnemyTurn(){
-  if(!BS._coliMode){_origStartEnemyTurn();return;}
-  coliSend({type:'coli_end_turn'});
-  BS.birdsActed=new Set();
-  BS.phase='net-wait';
-  document.getElementById('b-wave').textContent='⏳ Turno del rival';
-  setTurnUI('enemy');
-  blog('⏭ Turno cedido al rival','ll-sys');
-}
-
-function coliShowResult(won){
-  BS._coliMode=false;
-  coliSend({type:'coli_result',rivalWon:won});
+function coliShowResult(iWon){
+  if(!BS._coliMode)return;
+  BS._coliMode=false;BS.phase='over';
+  // Tell rival what happened on our screen
+  coliSend({type:'coli_result',iWon});
   COLI.noBattleItems=false;
-  // Reuse the result screen
-  showResult(won);
-  // Override result text
+  screenFlash(iWon?'rgba(255,255,100,.55)':'rgba(60,0,0,.8)',400);
+  if(iWon)spawnConfetti(60);else screenShake(8,400);
   setTimeout(()=>{
-    const t=document.getElementById('res-title');
-    const s=document.getElementById('res-sub');
-    if(t)t.textContent=won?'¡VICTORIA!':'DERROTA';
-    if(s)s.textContent=won?'¡Ganaste el combate del Coliseo!':'El rival ganó esta vez…';
-  },100);
+    showResult(iWon);
+    // Override result text
+    setTimeout(()=>{
+      const t=document.getElementById('res-title');
+      const s=document.getElementById('res-sub');
+      if(t)t.textContent=iWon?'¡VICTORIA!':'DERROTA';
+      if(s)s.textContent=iWon?'¡Ganaste el Coliseo!':'El rival ganó esta vez…';
+    },80);
+  },600);
 }
 
 /* ═══ TITLE ═══ */
@@ -6563,6 +6484,14 @@ function updPotBtn(){
   btn.textContent=inColi?'🚫 Sin items':`🧪 Poción (${tot})`;
   btn.disabled=tot===0||BS.phase!=='player'||inColi;
   if(inColi)btn.title='No se pueden usar objetos en el Coliseo';
+  const etBtn=document.getElementById('btn-end-turn');
+  if(etBtn){
+    const acted=BS.birdsActed?BS.birdsActed.size:0;
+    etBtn.disabled=who!=='player'||acted===0;
+    const aliveCount=BS.birds.filter(b=>isAlive(b)).length;
+    const remaining=aliveCount-acted;
+    etBtn.textContent=remaining>0&&acted>0?`⏭ Fin Turno (${remaining} quedan)`:'⏭ Fin Turno';
+  }
 }
 
 /* ── DAMAGE FLOAT (uses canvas positions) ── */
@@ -6621,6 +6550,8 @@ function doAttack(){
       showDmgNum('ep'+enemyIdx,d,'dn-a');refreshPlate(tgt,'ep'+enemyIdx);
       if(d>50)screenFlash('rgba(255,220,0,.4)',120);
       const ep3=ENEMY_POS[enemyIdx];if(ep3)spawnParts(ep3.x,ep3.y,'#ff8844',d>40?14:8,'exp');
+      // PvP: send attack to rival
+      if(BS._coliMode)coliSend({type:'coli_action',action:{kind:'attack',birdIdx,targetIdx:enemyIdx,dmg:d}});
     },
     ()=>{// onDone
       if(checkWin())return;ensureEnemy();
@@ -6646,7 +6577,7 @@ function addRage(amount){
 function markActed(birdIdx, delay){
   if(!BS.birdsActed)BS.birdsActed=new Set();
   BS.birdsActed.add(birdIdx);
-  BS.phase='busy'; // stay busy during the transition delay — no new actions allowed
+  BS.phase='busy';
   setTurnUI('busy');
   setTimeout(()=>{
     const nextIdx=BS.birds.findIndex((b,i)=>isAlive(b)&&!BS.birdsActed.has(i));
@@ -6663,11 +6594,19 @@ function markActed(birdIdx, delay){
 
 function startEnemyTurn(){
   BS.birdsActed=new Set();
-  // Reset active idx to first alive bird for next round
   BS.activeIdx=BS.birds.findIndex(b=>isAlive(b));
   if(BS.activeIdx<0)BS.activeIdx=0;
-  setTurnUI('enemy');
-  setTimeout(doEnemyTurn,320);
+  if(BS._coliMode){
+    // PvP: tell rival it's their turn, then wait
+    coliSend({type:'coli_end_turn'});
+    BS.phase='net-wait';
+    document.getElementById('b-wave').textContent='⏳ Turno del rival…';
+    setTurnUI('enemy');
+    blog('⏳ Turno del rival…','ll-sys');
+  } else {
+    setTurnUI('enemy');
+    setTimeout(doEnemyTurn,320);
+  }
 }
 function resetRage(){RAGE=0;updateRageUI();}
 
@@ -6838,7 +6777,15 @@ function fireSuper(birdIdx){const usedBirdIdx=birdIdx;
     },
     ()=>{
       if(checkWin())return;ensureEnemy();
-      setTimeout(doEnemyTurn,320);
+      if(BS._coliMode){
+        // Send super result to rival — they apply the HP changes on their side
+        const spDmg=Math.round(bird.curSpDmg*1.6);
+        const hitAll=bird.spEff==='aoe'||bird.spEff==='multienemy';
+        coliSend({type:'coli_action',action:{kind:'super',birdIdx:usedBirdIdx,targetIdx,hitAll,dmg:spDmg}});
+        markActed(usedBirdIdx,320);
+      } else {
+        setTimeout(doEnemyTurn,320);
+      }
     }
   );
 }
@@ -6846,6 +6793,12 @@ function fireSuper(birdIdx){const usedBirdIdx=birdIdx;
 
 
 /* ── POTION ── */
+document.getElementById('btn-end-turn').addEventListener('click',()=>{
+  if(BS.phase!=='player')return;
+  if(!BS.birdsActed||BS.birdsActed.size===0)return; // need at least 1 action
+  startEnemyTurn();
+});
+
 document.getElementById('btn-potion').addEventListener('click',()=>{
   if(BS.phase!=='player')return;
   let usedId=null;
@@ -7028,6 +6981,12 @@ function doEnemyTurn(){
 }
 function checkWin(){
   if(!BS.enemies.every(e=>!isAlive(e)))return false;
+  // PvP mode: I killed all rival birds → I win
+  if(BS._coliMode){
+    BS.phase='over';setTurnUI('busy');
+    setTimeout(()=>coliShowResult(true),600);
+    return true;
+  }
   // Check if there are more waves
   if(BS._waves&&BS._waveIdx<BS._waves.length-1){
     // More waves — start advance animation
