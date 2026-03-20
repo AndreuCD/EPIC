@@ -3822,7 +3822,9 @@ function coliSetStatus(msg,col){
   if(el){el.textContent=msg;el.style.color=col||'#aaa';}
 }
 function coliSend(obj){
+  console.log('[COLI] send',obj.type,'conn=',!!COLI.conn,'open=',COLI.conn?.open);
   if(COLI.conn&&COLI.conn.open)COLI.conn.send(JSON.stringify(obj));
+  else console.warn('[COLI] send FAILED - conn not open');
 }
 function coliCleanup(){
   if(COLI.conn){try{COLI.conn.close();}catch{}}
@@ -3923,6 +3925,7 @@ function showColiseumOverlay(){
   // SINGLE data router — swap COLI._onData to change mode
   COLI._onData=(raw)=>{
     let msg;try{msg=JSON.parse(raw);}catch{return;}
+    console.log('[COLI] recv',msg.type);
     if(msg.type==='team'){showRivalTeam(msg.team);}
     if(msg.type==='name'){
       COLI.rivalName=msg.name;
@@ -3931,6 +3934,7 @@ function showColiseumOverlay(){
     }
     if(msg.type==='fight_ready'){
       COLI.rivalReady=true;
+      console.log('[COLI] fight_ready received, meReady=',COLI.meReady);
       coliSetStatus('⚔ Rival listo — ¡pulsa Combatir!','#ffe44d');
       if(COLI.meReady)startColiseumBattle();
     }
@@ -4026,6 +4030,7 @@ function showColiseumOverlay(){
 
   /* ── FIGHT ── */
   document.getElementById('coli-fight-btn').onclick=()=>{
+    console.log('[COLI] fight btn clicked, rivalTeam=',!!COLI.rivalTeam,'conn=',!!COLI.conn,'connOpen=',COLI.conn?.open);
     if(!COLI.rivalTeam){coliSetStatus('⚠ Esperando equipo del rival','#ff8844');return;}
     COLI.meReady=true;
     coliSend({type:'fight_ready'});
@@ -4061,6 +4066,7 @@ function showColiseumOverlay(){
    - 'net-wait' = waiting for rival's actions from network
 */
 function startColiseumBattle(){
+  console.log('[COLI] startColiseumBattle called, conn=',!!COLI.conn,'rivalTeam=',!!COLI.rivalTeam);
   const overlay=document.getElementById('coliseum-overlay');
   overlay.style.display='none';
   COLI.noBattleItems=true;
