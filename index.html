@@ -3822,9 +3822,7 @@ function coliSetStatus(msg,col){
   if(el){el.textContent=msg;el.style.color=col||'#aaa';}
 }
 function coliSend(obj){
-  console.log('[COLI] send',obj.type,'conn=',!!COLI.conn,'open=',COLI.conn?.open);
   if(COLI.conn&&COLI.conn.open)COLI.conn.send(JSON.stringify(obj));
-  else console.warn('[COLI] send FAILED - conn not open');
 }
 function coliCleanup(){
   if(COLI.conn){try{COLI.conn.close();}catch{}}
@@ -3925,7 +3923,6 @@ function showColiseumOverlay(){
   // SINGLE data router — swap COLI._onData to change mode
   COLI._onData=(raw)=>{
     let msg;try{msg=JSON.parse(raw);}catch{return;}
-    console.log('[COLI] recv',msg.type);
     if(msg.type==='team'){showRivalTeam(msg.team);}
     if(msg.type==='name'){
       COLI.rivalName=msg.name;
@@ -3933,9 +3930,13 @@ function showColiseumOverlay(){
       if(el)el.textContent='Rival: '+msg.name;
     }
     if(msg.type==='fight_ready'){
+      // Rival sent their final team with fight_ready
+      if(msg.team){COLI.rivalTeam=msg.team;}
       COLI.rivalReady=true;
-      console.log('[COLI] fight_ready received, meReady=',COLI.meReady);
-      coliSetStatus('⚔ Rival listo — ¡pulsa Combatir!','#ffe44d');
+      coliSetStatus('⚔ ¡Rival listo!','#ffe44d');
+      // Enable fight button if we have a rival team
+      const fb=document.getElementById('coli-fight-btn');
+      if(fb&&COLI.rivalTeam)fb.disabled=false;
       if(COLI.meReady)startColiseumBattle();
     }
     // Battle messages — always handled if in battle mode
@@ -4030,11 +4031,22 @@ function showColiseumOverlay(){
 
   /* ── FIGHT ── */
   document.getElementById('coli-fight-btn').onclick=()=>{
-    console.log('[COLI] fight btn clicked, rivalTeam=',!!COLI.rivalTeam,'conn=',!!COLI.conn,'connOpen=',COLI.conn?.open);
     if(!COLI.rivalTeam){coliSetStatus('⚠ Esperando equipo del rival','#ff8844');return;}
+    if(active.length<3){coliSetStatus('⚠ Elige 3 pájaros','#ff8844');return;}
+    // Update myTeam with current selection before battle
+    COLI.myTeam={active:[...active],reserve:[...reserve]};
+    // Send fight_ready with our final team
+    const effs={};const weapons={};const armors={};
+    active.forEach(id=>{
+      effs[id]=getBirdEff(id);
+      weapons[id]=GS.equippedWeapons[id]||null;
+      armors[id]=GS.equippedArmors[id]||null;
+    });
+    coliSend({type:'fight_ready',team:{...COLI.myTeam,effs,weapons,armors}});
     COLI.meReady=true;
-    coliSend({type:'fight_ready'});
-    coliSetStatus('✅ Tú listo — esperando rival…','#ffe44d');
+    // Also update our team one more time
+    coliSend({type:'team',team:{...COLI.myTeam,effs,weapons,armors}});
+    coliSetStatus('✅ Listo — esperando rival…','#ffe44d');
     document.getElementById('coli-fight-btn').disabled=true;
     if(COLI.rivalReady)startColiseumBattle();
   };
@@ -4056,149 +4068,103 @@ function showColiseumOverlay(){
   overlay.onclick=(e)=>{if(e.target===overlay){overlay.style.display='none';COLI.noBattleItems=false;}};
 }
 
-/* ═══ COLISEUM BATTLE ENGINE ═══
-   Architecture:
-   - Both players use the existing battle screen
-   - MY birds are on the LEFT (BS.birds), RIVAL birds are on the RIGHT (BS.enemies)
-   - My turn: I drag/attack → action sent over WebRTC → applied locally + on rival screen
-   - Rival turn: I receive their action msg → apply it to MY birds → animate it
-   - Turn alternates: HOST goes first (phase='player'), then RIVAL (phase='net-wait')
-   - 'net-wait' = waiting for rival's actions from network
-*/
+/* ═══ COLISEUM BATTLE ENGINE ═══ */
 function startColiseumBattle(){
-  console.log('[COLI] startColiseumBattle called, conn=',!!COLI.conn,'rivalTeam=',!!COLI.rivalTeam);
-  const overlay=document.getElementById('coliseum-overlay');
-  overlay.style.display='none';
-  COLI.noBattleItems=true;
-  COLI.cbState={
-    myTeam:COLI.myTeam,
-    rivalTeam:COLI.rivalTeam,
-    myBirdsActed:new Set(),
-    rivalBirdsActed:new Set(),
-    turn:0,
-  };
+  // Guard: need both teams
+  if(!COLI.myTeam?.active?.length||!COLI.rivalTeam?.active?.length){
+    alert('Error: equipo no disponible. Reconecta.');return;
+  }
 
-  // Build the fake "node" that startBattle expects
-  // Rival birds act as "enemies" visually but use bird sprites + stats
-  const rivalIds=COLI.rivalTeam.active;
-  const rivalEnemies=rivalIds.map(id=>{
+  stopLoop(); // kill any existing loop
+  document.getElementById('coliseum-overlay').style.display='none';
+  COLI.noBattleItems=true;
+  COLI.cbState={rivalBirdsActed:new Set()};
+
+  // Build MY bird instances (with full gear)
+  BS.birds=COLI.myTeam.active.map(id=>buildBirdInst(id));
+
+  // Build RIVAL bird instances shown on right side
+  BS.enemies=COLI.rivalTeam.active.map(id=>{
     const bd=ALL_BIRDS[id];
+    if(!bd)return{name:id,maxHp:80,hp:80,atk:18,def:4,curAtk:18,curDef:4,spDmg:30,spCh:.3,
+      spName:'Attack',buffs:[],draw:(cx,x,y,r)=>{}};
     const e2=COLI.rivalTeam.effs?.[id]||{};
-    if(!bd)return{name:id,maxHp:100,hp:100,atk:20,def:5,curAtk:20,curDef:5,spDmg:40,spCh:.35,
-      spName:'Attack',buffs:[],draw:(cx,x,y,r,bl)=>{}};
-    // Use the rival's gear stats
-    const rWeapon=(COLI.rivalTeam.weapons||{})[id]||null;
-    const rArmor=(COLI.rivalTeam.armors||{})[id]||null;
-    return{
-      ...bd,
-      key:'rival_'+id,
-      birdId:id,
-      isRivalBird:true,
-      rivalWeapon:rWeapon,
-      rivalArmor:rArmor,
-      maxHp:bd.maxHp+(e2.maxHp||0),
-      hp:bd.maxHp+(e2.maxHp||0),
-      atk:bd.atk+(e2.atk||0),
-      curAtk:bd.atk+(e2.atk||0),
-      def:bd.def+(e2.def||0),
-      curDef:bd.def+(e2.def||0),
+    const rW=(COLI.rivalTeam.weapons||{})[id]||null;
+    const rA=(COLI.rivalTeam.armors||{})[id]||null;
+    const maxHp=bd.maxHp+(e2.maxHp||0);
+    return{...bd,
+      key:'coli_'+id,birdId:id,isRivalBird:true,
+      rivalWeapon:rW,rivalArmor:rA,
+      maxHp,hp:maxHp,
+      atk:bd.atk+(e2.atk||0),curAtk:bd.atk+(e2.atk||0),
+      def:bd.def+(e2.def||0),curDef:bd.def+(e2.def||0),
       spDmg:(bd.spDmg||0)+(e2.spDmg||0),
-      buffs:[],
-      draw:(cx,x,y,r,bl,_inst)=>bd.draw(cx,x,y,r,bl,0),
+      buffs:[],chargeT:undefined,
+      draw:(cx,x,y,r,bl)=>bd.draw(cx,x,y,r,bl,0),
     };
   });
 
-  const fakeNode={
-    id:'coliseum',label:'🏟 Coliseo',
-    isColiseumBattle:true,
-    enemies:[], // overridden below
-    zi:0,boss:false,miniboss:false,
-    zoneName:'Coliseo',zoneTheme:5,
-  };
-
-  // Use startBattle but intercept enemy building
-  BS.birds=COLI.myTeam.active.map(id=>buildBirdInst(id));
-  BS.enemies=rivalEnemies;
-  BS._node=fakeNode;
-  BS._waves=null;
-  BS._waveIdx=0;
-  BS._advancing=false;
-  BS._scale=1;
+  BS._node={id:'coliseum',label:'🏟 Coliseo',isColiseumBattle:true,zoneName:'Coliseo',zoneTheme:5,zi:0};
+  BS._waves=null;BS._waveIdx=0;BS._advancing=false;BS._scale=1;
   BS.birdsActed=new Set();
   BS.activeIdx=0;BS.targetIdx=0;
-  // Host attacks first, joiner waits
-  BS.phase=COLI.isHost?'player':'net-wait';
   BS.drag={on:false,bi:-1,x0:0,y0:0,cx:0,cy:0};
+  BS._coliMode=true;
+  // HOST goes first
+  BS.phase=COLI.isHost?'player':'net-wait';
   BIRD_POS=[];ENEMY_POS=[];
   resetRage();
 
-  const myN=COLI.myName||'Tú';
-  const rivN=COLI.rivalName||'Rival';
+  // UI setup
+  const myN=COLI.myName||'Tú', rivN=COLI.rivalName||'Rival';
   document.getElementById('b-title').textContent=`🏟 ${myN} vs ${rivN}`;
-  document.getElementById('b-wave').textContent=COLI.isHost?'⚔ Turno tuyo':'⏳ Turno del rival';
+  document.getElementById('b-wave').textContent=COLI.isHost?'⚔ Tu turno':'⏳ Turno de '+rivN;
   BS._turn=0;
-  updPotBtn();buildPanels();clearLog();
-  blog('🏟 ¡COMBATE EN EL COLISEO!','ll-sys');
-  blog(COLI.isHost?'🎮 Tú atacas primero':'⏳ El rival ataca primero','ll-sys');
-  setTurnUI(COLI.isHost?'player':'enemy');
 
-  const bcv=document.getElementById('battle-cv');rsCV(bcv);const bcx=bcv.getContext('2d');
-  const dcv=document.getElementById('drag-cv');rsCV(dcv);
+  // Remove old drag listeners
   if(window._dStartBound){document.removeEventListener('mousedown',window._dStartBound);document.removeEventListener('touchstart',window._dStartBound,{passive:false});}
   if(window._dMoveBound){document.removeEventListener('mousemove',window._dMoveBound);document.removeEventListener('touchmove',window._dMoveBound,{passive:false});}
   if(window._dEndBound){document.removeEventListener('mouseup',window._dEndBound);document.removeEventListener('touchend',window._dEndBound);}
   window._dStartBound=dStart;window._dMoveBound=dMove;window._dEndBound=dEnd;
-  document.addEventListener('mousedown',dStart);
-  document.addEventListener('touchstart',dStart,{passive:false});
-  document.addEventListener('mousemove',dMove);
-  document.addEventListener('touchmove',dMove,{passive:false});
-  document.addEventListener('mouseup',dEnd);
-  document.addEventListener('touchend',dEnd);
-  dcv.style.pointerEvents='none';
+  document.addEventListener('mousedown',dStart);document.addEventListener('touchstart',dStart,{passive:false});
+  document.addEventListener('mousemove',dMove);document.addEventListener('touchmove',dMove,{passive:false});
+  document.addEventListener('mouseup',dEnd);document.addEventListener('touchend',dEnd);
+  document.getElementById('drag-cv').style.pointerEvents='none';
 
-  // ── NETWORK ACTION HANDLER ──
-  // Hook into the existing conn.on('data') to handle battle messages
+  updPotBtn();buildPanels();clearLog();
+  blog(`🏟 ${myN} vs ${rivN} — ¡COMBATE!`,'ll-sys');
+  blog(COLI.isHost?'🎮 Eres el anfitrión — atacas primero':`⏳ ${rivN} ataca primero`,'ll-sys');
+  setTurnUI(COLI.isHost?'player':'enemy');
+
+  // ── BATTLE DATA HANDLER ──
   COLI._battleDataHandler=(raw)=>{
     let msg;try{msg=JSON.parse(raw);}catch{return;}
 
     if(msg.type==='coli_action'){
       const act=msg.action;
       if(act.kind==='attack'){
-        // Rival's bird[theirBirdIdx] (= my BS.enemies[theirBirdIdx]) hit my bird[myBirdIdx] (= my BS.birds[myBirdIdx])
         const myBird=BS.birds[act.myBirdIdx];
         const rivalBird=BS.enemies[act.theirBirdIdx];
         if(!myBird||!rivalBird)return;
-        // Apply the EXACT damage the rival calculated (keeps both screens in sync)
         myBird.hp=Math.max(0,myBird.hp-act.dmg);
         addRage(rageFromDmg(act.dmg,RAGE_PER_RECV));
-        blog(`🐷 ${rivalBird.name||'Rival'} → ${myBird.name}: ${act.dmg} dmg`,'ll-e');
-        showDmgNum('bp'+act.targetIdx,act.dmg,'dn-a');
-        refreshPlate(myBird,'bp'+act.targetIdx);
-        screenFlash('rgba(255,50,0,.55)',150);
-        screenShake(act.dmg>40?8:4,220);
-        const bp2=BIRD_POS[act.targetIdx];
-        if(bp2)spawnParts(bp2.x,bp2.y,'#ff8844',act.dmg>40?14:8,'exp');
-        COLI.cbState.rivalBirdsActed.add(act.theirBirdIdx);
-        // Check if I lost
-        if(BS.birds.every(b=>!isAlive(b))){
-          setTimeout(()=>coliShowResult(false),600);return;
-        }
+        blog(`⚔ ${rivalBird.name} → ${myBird.name}: ${act.dmg}dmg`,'ll-e');
+        showDmgNum('bp'+act.myBirdIdx,act.dmg,'dn-a');
+        refreshPlate(myBird,'bp'+act.myBirdIdx);
+        screenFlash('rgba(255,50,0,.5)',150);screenShake(act.dmg>40?7:3,200);
+        const bp2=BIRD_POS[act.myBirdIdx];if(bp2)spawnParts(bp2.x,bp2.y,'#ff8844',8,'exp');
+        if(BS.birds.every(b=>!isAlive(b))){setTimeout(()=>coliShowResult(false),600);return;}
       }
       else if(act.kind==='ally'){
-        // Rival buffed/healed one of their own birds
         const rivalBird=BS.enemies[act.toIdx];
-        if(rivalBird){
-          if(act.eff==='heal'){
-            const h=Math.min(act.amount||50,rivalBird.maxHp-rivalBird.hp);
-            rivalBird.hp+=h;
-            blog(`💚 ${rivalBird.name} curado +${h}HP`,'ll-h');
-            const ep2=ENEMY_POS[act.toIdx];if(ep2)spawnHeal(ep2.x,ep2.y,10);
-            refreshPlate(rivalBird,'ep'+act.toIdx);
-          } else {
-            blog(`🛡 ${BS.enemies[act.fromIdx]?.name||'Rival'} apoya a ${rivalBird.name}`,'ll-ally');
-          }
+        if(rivalBird&&act.eff==='heal'){
+          const h=Math.min(act.amount||50,rivalBird.maxHp-rivalBird.hp);
+          rivalBird.hp+=h;refreshPlate(rivalBird,'ep'+act.toIdx);
+          blog(`💚 ${rivalBird.name} +${h}HP`,'ll-h');
+          const ep2=ENEMY_POS[act.toIdx];if(ep2)spawnHeal(ep2.x,ep2.y,8);
+        } else if(rivalBird){
+          blog(`🛡 ${BS.enemies[act.fromIdx]?.name||rivN} apoya`,'ll-ally');
         }
-        COLI.cbState.rivalBirdsActed.add(act.fromIdx);
       }
       else if(act.kind==='super'){
         const rivalBird=BS.enemies[act.theirBirdIdx];
@@ -4209,136 +4175,117 @@ function startColiseumBattle(){
         targets.forEach(({b,i})=>{
           if(!isAlive(b))return;
           b.hp=Math.max(0,b.hp-act.dmg);
-          addRage(rageFromDmg(act.dmg,RAGE_PER_RECV*1.2));
-          blog(`💥 ¡SUPER ${rivalBird.name}! → ${b.name}: ${act.dmg}dmg`,'ll-e');
+          blog(`💥 ¡SUPER ${rivalBird.name}! ${act.dmg}dmg→${b.name}`,'ll-e');
           showDmgNum('bp'+i,act.dmg,'dn-s');refreshPlate(b,'bp'+i);
         });
-        screenFlash('rgba(200,0,255,.45)',280);
-        COLI.cbState.rivalBirdsActed.add(act.theirBirdIdx);
-        if(BS.birds.every(b=>!isAlive(b))){
-          setTimeout(()=>coliShowResult(false),600);return;
-        }
+        screenFlash('rgba(200,0,255,.4)',250);
+        if(BS.birds.every(b=>!isAlive(b))){setTimeout(()=>coliShowResult(false),600);return;}
       }
-      // Refresh all plates
       BS.birds.forEach((_,i)=>refreshPlate(BS.birds[i],'bp'+i));
       BS.enemies.forEach((_,i)=>refreshPlate(BS.enemies[i],'ep'+i));
     }
 
     if(msg.type==='coli_end_turn'){
-      // Rival ended their turn → now it's MY turn
-      COLI.cbState.rivalBirdsActed=new Set();
       if(BS.birds.every(b=>!isAlive(b))){setTimeout(()=>coliShowResult(false),300);return;}
       if(BS.enemies.every(e=>!isAlive(e))){setTimeout(()=>coliShowResult(true),300);return;}
       setTimeout(()=>{
         BS.birdsActed=new Set();
-        BS.activeIdx=BS.birds.findIndex(b=>isAlive(b));
-        if(BS.activeIdx<0)BS.activeIdx=0;
-        BS.phase='player';
-        BS._turn=(BS._turn||0)+1;
-        document.getElementById('b-wave').textContent='⚔ Turno tuyo';
+        BS.activeIdx=BS.birds.findIndex(b=>isAlive(b));if(BS.activeIdx<0)BS.activeIdx=0;
+        BS.phase='player';BS._turn=(BS._turn||0)+1;
+        document.getElementById('b-wave').textContent='⚔ Tu turno';
         setTurnUI('player');
-        blog(`🎮 ¡Turno ${BS._turn}! Tú atacas.`,'ll-sys');
-      },350);
+        blog(`🎮 ¡Turno ${BS._turn}!`,'ll-sys');
+      },320);
     }
 
-    if(msg.type==='coli_result'){
-      // Rival's screen says battle ended — mirror the result
-      coliShowResult(!msg.iWon);
-    }
+    if(msg.type==='coli_result'){coliShowResult(!msg.iWon);}
   };
-  // Handler is already routing via COLI._onData → COLI._battleDataHandler
 
-  BS._coliMode=true;
+  // Route all incoming messages through the battle handler
+  // (COLI._onData already routes coli_* messages to _battleDataHandler)
 
   showScreen('battle-screen');
+  const bcv=document.getElementById('battle-cv');rsCV(bcv);const bcx=bcv.getContext('2d');
+  rsCV(document.getElementById('drag-cv'));
 
   startLoop(()=>{
-    drawBattleBG(bcx,bcv.width,bcv.height,bgT,5); // theme 5 = coliseum
+    drawBattleBG(bcx,bcv.width,bcv.height,bgT,5);
     const W=bcv.width,H=bcv.height;
 
-    // Birds (my team, left)
-    const nb=BS.birds.length;
+    // MY birds — left side, diamond layout
+    const bSlots=[[.5,.5],[.55,.38],[.32,.52],[.55,.66]];
     BS.birds.forEach((b,i)=>{
-      const slot=([{x:.60,y:.42},{x:.32,y:.52},{x:.52,y:.66}][i])||{x:.5,y:.55};
-      const bxBase=W*.38*slot.x+W*.04;
-      const byBase=H*(.48+slot.y*.28)+(isAlive(b)?Math.sin(bgT*1.4+i)*4:0);
+      const sl=bSlots[Math.min(i,bSlots.length-1)];
+      const bxBase=W*(.04+.34*sl[0]), byBase=H*(.46+sl[1]*.3)+(isAlive(b)?Math.sin(bgT*1.4+i)*4:0);
       BIRD_POS[i]={x:bxBase,y:byBase};
       if(!isAlive(b))return;
-      const off=ANIM.getBirdOffset(i);const hitShk=ANIM.getBirdHitShake(i);
-      const bx=bxBase+off.dx+hitShk.dx,by=byBase+off.dy+hitShk.dy;
-      const br=Math.max(1,34*Math.abs(off.sc)*Math.abs(hitShk.sc));
-      bcx.save();bcx.globalAlpha=.13;bcx.fillStyle='#000';bcx.beginPath();bcx.ellipse(bxBase,H*.71,28,8,0,0,Math.PI*2);bcx.fill();bcx.restore();
+      const off=ANIM.getBirdOffset(i),shk=ANIM.getBirdHitShake(i);
+      const bx=bxBase+off.dx+shk.dx,by=byBase+off.dy+shk.dy;
+      const br=Math.max(1,34*Math.abs(off.sc)*Math.abs(shk.sc));
+      bcx.save();bcx.globalAlpha=.12;bcx.fillStyle='#000';bcx.beginPath();bcx.ellipse(bxBase,H*.72,26,7,0,0,Math.PI*2);bcx.fill();bcx.restore();
       bcx.save();bcx.translate(bx,by);bcx.rotate(off.rot);
-      const aId2=GS.equippedArmors[b.id];
-      b.draw(bcx,0,0,br,!blink,aId2?0:armorTier(b.id));
-      if(aId2)drawArmorByRecipe(bcx,br,aId2,b.id);
-      const wId2=GS.equippedWeapons[b.id];if(wId2)drawWeaponOnBird(bcx,b.id,br,wId2);
+      const aId=GS.equippedArmors[b.id];
+      b.draw(bcx,0,0,br,!blink,aId?0:armorTier(b.id));
+      if(aId)drawArmorByRecipe(bcx,br,aId,b.id);
+      const wId=GS.equippedWeapons[b.id];if(wId)drawWeaponOnBird(bcx,b.id,br,wId);
       bcx.restore();
       ANIM.drawWeaponSwing(bcx,i,bx,by,br,b.id,GS.equippedWeapons[b.id]);
       if(i===BS.activeIdx&&BS.phase==='player'){
-        bcx.strokeStyle='rgba(255,220,50,.9)';bcx.lineWidth=2.5;bcx.setLineDash([5,3]);bcx.lineDashOffset=-bgT*14;
-        bcx.beginPath();bcx.arc(bxBase,byBase,42,0,Math.PI*2);bcx.stroke();bcx.setLineDash([]);
+        bcx.strokeStyle='rgba(255,220,50,.85)';bcx.lineWidth=2.5;bcx.setLineDash([5,3]);bcx.lineDashOffset=-bgT*14;
+        bcx.beginPath();bcx.arc(bxBase,byBase,40,0,Math.PI*2);bcx.stroke();bcx.setLineDash([]);
       }
-      if(BS.birdsActed&&BS.birdsActed.has(i)){
-        bcx.save();bcx.fillStyle='rgba(0,255,100,.85)';bcx.font='bold 13px serif';
-        bcx.textAlign='center';bcx.fillText('✓',bxBase+36,byBase-36);bcx.restore();
+      if(BS.birdsActed?.has(i)){
+        bcx.save();bcx.fillStyle='#44ff88';bcx.font='bold 13px serif';bcx.textAlign='center';
+        bcx.fillText('✓',bxBase+34,byBase-34);bcx.restore();
       }
     });
 
-    // Rival birds (right side, shown as "enemies")
-    const ne=Math.min(BS.enemies.length,4);
-    const eSlots=[[{x:.50,y:.50}],[{x:.42,y:.44},{x:.60,y:.60}],[{x:.38,y:.44},{x:.62,y:.44},{x:.50,y:.68}],[{x:.50,y:.32},{x:.30,y:.52},{x:.70,y:.52},{x:.50,y:.74}]][ne-1]||[{x:.5,y:.5}];
-    const eZX=W*.60,eZW=W*.32;
+    // RIVAL birds — right side, diamond layout
+    const eSlots=[[.5,.5],[.42,.38],[.62,.38],[.5,.68]];
     BS.enemies.forEach((e,i)=>{
-      if(i>=4){ENEMY_POS[i]={x:W*.92,y:H*.5};return;}
-      const sl=eSlots[i]||{x:.5,y:.5};
-      const exBase=eZX+eZW*sl.x,eyBase=H*(.44+sl.y*.30)+(isAlive(e)?Math.sin(bgT*1.2+i)*3:0);
+      if(i>=4){ENEMY_POS[i]={x:W*.97,y:H*.5};return;}
+      const sl=eSlots[Math.min(i,eSlots.length-1)];
+      const exBase=W*(.58+.36*sl[0]), eyBase=H*(.46+sl[1]*.3)+(isAlive(e)?Math.sin(bgT*1.2+i)*3:0);
       ENEMY_POS[i]={x:exBase,y:eyBase};
       if(!isAlive(e))return;
-      const shk=ANIM.getEnemyShake(i);const eaOff=ANIM.getEnemyOffset(i);
+      const shk=ANIM.getEnemyShake(i),eaOff=ANIM.getEnemyOffset(i);
       const ex=exBase+shk.dx+eaOff.dx,ey=eyBase+shk.dy+eaOff.dy;
-      const er=Math.max(1,34*shk.sc); // rival birds same size as player birds
-      bcx.save();bcx.globalAlpha=.13;bcx.fillStyle='#000';bcx.beginPath();bcx.ellipse(exBase,H*.71,28,8,0,0,Math.PI*2);bcx.fill();bcx.restore();
+      const er=Math.max(1,34*shk.sc);
+      bcx.save();bcx.globalAlpha=.12;bcx.fillStyle='#000';bcx.beginPath();bcx.ellipse(exBase,H*.72,26,7,0,0,Math.PI*2);bcx.fill();bcx.restore();
       bcx.save();bcx.translate(ex,ey);
       if(e.birdId&&ALL_BIRDS[e.birdId]){
         ALL_BIRDS[e.birdId].draw(bcx,0,0,er,!blink,0);
         if(e.rivalArmor)drawArmorByRecipe(bcx,er,e.rivalArmor,e.birdId);
         if(e.rivalWeapon)drawWeaponOnBird(bcx,e.birdId,er,e.rivalWeapon);
-      } else {
-        e.draw(bcx,0,0,er,!blink,e);
-      }
+      } else {e.draw(bcx,0,0,er,!blink);}
       bcx.restore();
-      // Red target ring on rival birds
       if(i===BS.targetIdx&&BS.phase==='player'){
-        bcx.strokeStyle='rgba(255,50,50,.9)';bcx.lineWidth=2.5;bcx.setLineDash([4,3]);bcx.lineDashOffset=-bgT*11;
-        bcx.beginPath();bcx.arc(exBase,eyBase,42,0,Math.PI*2);bcx.stroke();bcx.setLineDash([]);
+        bcx.strokeStyle='rgba(255,50,50,.85)';bcx.lineWidth=2.5;bcx.setLineDash([4,3]);bcx.lineDashOffset=-bgT*11;
+        bcx.beginPath();bcx.arc(exBase,eyBase,40,0,Math.PI*2);bcx.stroke();bcx.setLineDash([]);
         bcx.font='bold 10px Nunito,sans-serif';bcx.textAlign='center';bcx.textBaseline='bottom';
-        bcx.fillStyle='rgba(255,150,150,.9)';bcx.strokeStyle='rgba(0,0,0,.8)';bcx.lineWidth=2.5;
-        bcx.strokeText(e.name||'Rival',exBase,eyBase-44);bcx.fillText(e.name||'Rival',exBase,eyBase-44);
+        bcx.fillStyle='rgba(255,160,160,.9)';bcx.strokeStyle='rgba(0,0,0,.8)';bcx.lineWidth=2.5;
+        bcx.strokeText(e.name,exBase,eyBase-40);bcx.fillText(e.name,exBase,eyBase-40);
       }
     });
 
-    // "Waiting" overlay when it's rival's turn
+    // "Waiting" overlay
     if(BS.phase==='net-wait'){
-      bcx.save();bcx.fillStyle='rgba(0,0,0,.35)';bcx.fillRect(0,0,W,H);
-      bcx.font='bold '+Math.round(W*.04)+'px Lilita One,cursive';bcx.textAlign='center';
-      bcx.fillStyle='rgba(255,200,0,.8)';bcx.fillText('⏳ Turno del rival…',W*.5,H*.45);
-      bcx.restore();
+      bcx.save();bcx.fillStyle='rgba(0,0,0,.32)';bcx.fillRect(0,0,W,H);
+      bcx.font='bold '+Math.round(H*.045)+'px Lilita One,cursive';bcx.textAlign='center';
+      bcx.fillStyle='rgba(255,200,50,.9)';bcx.shadowColor='rgba(255,150,0,.6)';bcx.shadowBlur=18;
+      bcx.fillText(`⏳ Turno de ${rivN}…`,W/2,H*.46);bcx.shadowBlur=0;bcx.restore();
     }
 
     ANIM.tickProjectiles(bcx);
-    // Drag overlay
+    // Drag line
     const d=BS.drag;
     if(d.on){
-      const dcx2=dcv.getContext('2d');dcx2.clearRect(0,0,dcv.width,dcv.height);
+      const dcx2=document.getElementById('drag-cv').getContext('2d');
+      dcx2.clearRect(0,0,bcv.width,bcv.height);
       const bp2=BIRD_POS[d.bi];
       if(bp2){
-        dcx2.save();dcx2.strokeStyle='rgba(255,220,80,.6)';dcx2.lineWidth=2.5;dcx2.setLineDash([6,4]);
-        dcx2.beginPath();dcx2.moveTo(bp2.x,bp2.y);dcx2.lineTo(d.cx,d.cy);dcx2.stroke();
-        dcx2.setLineDash([]);dcx2.restore();
-        const allyTgt=allyAtPos(d.cx,d.cy);const enemyTgt=enemyAtPos(d.cx,d.cy);
-        if(allyTgt>=0&&allyTgt!==d.bi){dcx2.save();dcx2.strokeStyle='rgba(80,255,120,.7)';dcx2.lineWidth=2.5;dcx2.beginPath();dcx2.arc(BIRD_POS[allyTgt]?.x||0,BIRD_POS[allyTgt]?.y||0,44,0,Math.PI*2);dcx2.stroke();dcx2.restore();}
-        if(enemyTgt>=0){dcx2.save();dcx2.strokeStyle='rgba(255,80,80,.7)';dcx2.lineWidth=2.5;dcx2.beginPath();dcx2.arc(ENEMY_POS[enemyTgt]?.x||0,ENEMY_POS[enemyTgt]?.y||0,44,0,Math.PI*2);dcx2.stroke();dcx2.restore();}
+        dcx2.save();dcx2.strokeStyle='rgba(255,220,80,.55)';dcx2.lineWidth=2.5;dcx2.setLineDash([6,4]);
+        dcx2.beginPath();dcx2.moveTo(bp2.x,bp2.y);dcx2.lineTo(d.cx,d.cy);dcx2.stroke();dcx2.setLineDash([]);dcx2.restore();
       }
     }
   });
