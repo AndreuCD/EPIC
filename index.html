@@ -418,6 +418,7 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-ev
       <div class="hud-pill" id="hud-birds">🐦 1 bird</div>
       <div class="hud-pill" id="hud-stats-btn" style="cursor:pointer" title="Stats">📊</div>
       <div class="hud-pill" id="hud-gallery-btn" style="cursor:pointer" title="Galería">🎨</div>
+      <div class="hud-pill" id="hud-menu-btn" style="cursor:pointer;opacity:.7" title="Menú principal">🏠</div>
     </div>
     <div class="map-tt" id="map-tt">
       <div class="tt-name" id="tt-name">–</div>
@@ -4950,179 +4951,196 @@ function showCoopMapScreen(){
   const cv=document.getElementById('map-cv'); rsCV(cv); const cx=cv.getContext('2d');
   const tt=document.getElementById('map-tt'); tt.style.display='none';
   let hoverId=null;
+  COOP.completed=COOP.completed||new Set();
 
-  // Build coop node layout from COOP_ZONES node definitions
+  // ── Layout ──
   function buildCoopLayout(W,H){
-    const nodes=[];
-    const PAD=36, zW=(W-PAD*2)/COOP_ZONES.length;
+    const nodes=[], PAD=36, zW=(W-PAD*2)/COOP_ZONES.length;
     COOP_ZONES.forEach((zone,zi)=>{
       const zNodes=zone.nodes||[];
-      const n=zNodes.length;
       zNodes.forEach((nd,ni)=>{
-        // Zigzag layout within each zone
+        const n=zNodes.length;
         const frac=n>1?(zi%2===0?ni/(n-1):1-ni/(n-1)):0.5;
-        const zx=PAD+zi*zW+zW*0.5;
-        const ny=H*(0.13+frac*0.78);
-        nodes.push({
-          ...nd,
-          zi, ni, zx, ny, r:nd.boss?20:nd.miniboss?17:14,
-          theme:zone.theme||0, zoneName:zone.name,
-          zoneColor:zone.color||'#111',
-          isCoop:true,
-        });
+        nodes.push({...nd, zi, ni,
+          zx: PAD+zi*zW+zW*.5,
+          ny: H*(.12+frac*.78),
+          r: nd.boss?20:nd.miniboss?17:14,
+          theme:zone.theme||0, zoneName:zone.name, zoneColor:zone.color||'#111'});
       });
     });
     return nodes;
   }
 
-  const _ZONE_COLS=COOP_ZONES.map(z=>z.color||'#111');
-  const _ZONE_THEMES=COOP_ZONES.map(z=>z.theme||0);
+  // ── Is node unlocked? ──
+  function isCoopUnlocked(nd){
+    if(nd.zi===0&&nd.ni===0) return true; // first node always unlocked
+    // Previous node in same zone must be completed
+    const prev=COOP_ZONES[nd.zi]?.nodes[nd.ni-1];
+    if(prev) return COOP.completed.has(prev.id);
+    // First node of zone: last node of previous zone must be done
+    if(nd.ni===0&&nd.zi>0){
+      const prevZone=COOP_ZONES[nd.zi-1];
+      const lastNode=prevZone?.nodes[prevZone.nodes.length-1];
+      return lastNode?COOP.completed.has(lastNode.id):false;
+    }
+    return false;
+  }
 
+  // ── Draw ──
   function drawCoopMap(){
-    const W=cv.width,H=cv.height;
-    const PAD=40,zW=(W-PAD*2)/COOP_ZONES.length;
-    // Draw each zone background with its theme sky
+    const W=cv.width, H=cv.height;
+    if(!W||!H) return;
+    const PAD=36, zW=(W-PAD*2)/COOP_ZONES.length;
+
+    // Draw each zone with its sky theme
     COOP_ZONES.forEach((zone,zi)=>{
       const x0=PAD+zi*zW;
-      cx.save();cx.beginPath();cx.rect(x0,0,zW-2,H);cx.clip();
-      drawSky(cx,W,H,bgT+zi*0.8,_ZONE_THEMES[zi]||0);
+      cx.save(); cx.beginPath(); cx.rect(x0,0,zW,H); cx.clip();
+      drawSky(cx,W,H,bgT+zi*0.7,zone.theme||0);
       cx.restore();
-      // zone tint overlay
-      cx.save();cx.globalAlpha=.18;cx.fillStyle=_ZONE_COLS[zi]||'#111';
-      cx.fillRect(x0,0,zW-2,H);cx.restore();
-      // vertical divider
+      // tint
+      cx.save(); cx.globalAlpha=.2; cx.fillStyle=zone.color||'#111';
+      cx.fillRect(x0,0,zW-1,H); cx.restore();
+      // divider
       if(zi>0){
-        cx.save();cx.globalAlpha=.5;cx.strokeStyle='rgba(100,200,255,.5)';
-        cx.lineWidth=2;cx.setLineDash([6,4]);
-        cx.beginPath();cx.moveTo(x0,H*.05);cx.lineTo(x0,H*.97);cx.stroke();
-        cx.setLineDash([]);cx.restore();
+        cx.save(); cx.globalAlpha=.4; cx.strokeStyle='rgba(150,220,255,.5)';
+        cx.lineWidth=1.5; cx.setLineDash([5,4]);
+        cx.beginPath(); cx.moveTo(x0,H*.06); cx.lineTo(x0,H*.96); cx.stroke();
+        cx.setLineDash([]); cx.restore();
       }
-      // zone name banner
+      // zone name
       cx.save();
-      cx.fillStyle='rgba(0,0,0,.55)';
-      cx.fillRect(x0+2,H*.04,zW-6,22);
-      cx.font='bold 10px Nunito,sans-serif';cx.textAlign='center';
-      cx.fillStyle='rgba(100,220,255,.9)';cx.strokeStyle='rgba(0,0,0,.8)';cx.lineWidth=2.5;
-      cx.strokeText(zone.name,x0+zW/2,H*.04+14);
-      cx.fillText(zone.name,x0+zW/2,H*.04+14);
-      // progress
-      const done=(COOP.completed?[...COOP.completed].filter(id=>id.startsWith('cz'+zi+'n')).length:0);
-      const tot=(zone.nodes||[]).length||8;
-      cx.fillStyle='rgba(0,0,0,.4)';cx.fillRect(x0+8,H*.04+18,zW-18,4);
-      if(done>0){const pg=cx.createLinearGradient(x0+8,0,x0+zW-10,0);pg.addColorStop(0,'#40d0ff');pg.addColorStop(1,'#0088ff');
-        cx.fillStyle=pg;cx.fillRect(x0+8,H*.04+18,(zW-18)*(done/tot),4);}
+      cx.fillStyle='rgba(0,0,0,.6)'; cx.fillRect(x0+2,H*.035,zW-4,20);
+      cx.font='bold 10px Nunito,sans-serif'; cx.textAlign='center';
+      cx.strokeStyle='rgba(0,0,0,.9)'; cx.lineWidth=3;
+      cx.fillStyle='rgba(120,230,255,.95)';
+      cx.strokeText(zone.name,x0+zW/2,H*.035+13);
+      cx.fillText(zone.name,x0+zW/2,H*.035+13);
+      // progress bar
+      const done=[...COOP.completed].filter(id=>zone.nodes.some(n=>n.id===id)).length;
+      const tot=zone.nodes.length;
+      cx.fillStyle='rgba(0,0,0,.45)'; cx.fillRect(x0+6,H*.035+15,zW-12,3);
+      if(done>0){
+        const pg=cx.createLinearGradient(x0+6,0,x0+zW-6,0);
+        pg.addColorStop(0,'#40d0ff'); pg.addColorStop(1,'#0066ff');
+        cx.fillStyle=pg; cx.fillRect(x0+6,H*.035+15,(zW-12)*(done/tot),3);
+      }
       cx.restore();
     });
 
     const nodes=buildCoopLayout(W,H);
-    // Connections within zone
-    // Draw connections within each zone
+
+    // Connections
     const byZone={};
     nodes.forEach(nd=>{(byZone[nd.zi]=byZone[nd.zi]||[]).push(nd);});
-    Object.values(byZone).forEach(zNodes=>{
-      zNodes.sort((a,b)=>a.ni-b.ni);
-      for(let i=1;i<zNodes.length;i++){
-        const a=zNodes[i-1],b=zNodes[i];
-        const doneA=COOP.completed?.has(a.id);
-        cx.save();cx.globalAlpha=.7;
-        cx.strokeStyle=doneA?'rgba(80,255,80,.6)':'rgba(150,200,255,.3)';
-        cx.lineWidth=doneA?2.5:1.5;cx.setLineDash([4,4]);
-        cx.beginPath();cx.moveTo(a.zx,a.ny);cx.lineTo(b.zx,b.ny);cx.stroke();
-        cx.setLineDash([]);cx.restore();
+    Object.values(byZone).forEach(zns=>{
+      zns.sort((a,b)=>a.ni-b.ni);
+      for(let i=1;i<zns.length;i++){
+        const a=zns[i-1], b=zns[i];
+        const unlocked=isCoopUnlocked(b);
+        const done=COOP.completed.has(a.id);
+        cx.save(); cx.globalAlpha=unlocked?.8:.3;
+        cx.strokeStyle=done?'rgba(80,255,80,.7)':'rgba(150,200,255,.4)';
+        cx.lineWidth=done?2.5:1.5; cx.setLineDash([4,4]);
+        cx.beginPath(); cx.moveTo(a.zx,a.ny); cx.lineTo(b.zx,b.ny); cx.stroke();
+        cx.setLineDash([]); cx.restore();
       }
     });
 
+    // Nodes
     nodes.forEach(nd=>{
-      const done=COOP.completed?.has(nd.id);
+      const done=COOP.completed.has(nd.id);
       const hov=nd.id===hoverId;
+      const unlocked=isCoopUnlocked(nd);
       const r=nd.r+(hov?3:0);
       const ng=cx.createRadialGradient(nd.zx,nd.ny-r*.2,r*.1,nd.zx,nd.ny,r*1.1);
-      ng.addColorStop(0,done?'#88ff88':hov?'#aaeeff':nd.boss?'#ff7722':nd.miniboss?'#ff44bb':'#3366cc');
-      ng.addColorStop(1,done?'#226622':hov?'#3399bb':nd.boss?'#aa2200':nd.miniboss?'#881155':'#112255');
-      // glow
-      if(hov||nd.boss){
-        cx.save();cx.shadowColor=nd.boss?'#ff6600':hov?'#40d0ff':'#3366cc';cx.shadowBlur=18;
-        cx.beginPath();cx.arc(nd.zx,nd.ny,r,0,Math.PI*2);cx.fillStyle=ng;cx.fill();cx.restore();
+      if(!unlocked){ng.addColorStop(0,'#333');ng.addColorStop(1,'#111');}
+      else if(done){ng.addColorStop(0,'#88ff88');ng.addColorStop(1,'#226622');}
+      else if(hov){ng.addColorStop(0,'#aaeeff');ng.addColorStop(1,'#3399bb');}
+      else if(nd.boss){ng.addColorStop(0,'#ff7722');ng.addColorStop(1,'#aa2200');}
+      else if(nd.miniboss){ng.addColorStop(0,'#ff44bb');ng.addColorStop(1,'#881155');}
+      else{ng.addColorStop(0,'#3366cc');ng.addColorStop(1,'#112255');}
+      if((hov||nd.boss)&&unlocked){
+        cx.save(); cx.shadowColor=nd.boss?'#ff6600':hov?'#40d0ff':'#3366cc'; cx.shadowBlur=16;
+        cx.beginPath(); cx.arc(nd.zx,nd.ny,r,0,Math.PI*2); cx.fillStyle=ng; cx.fill(); cx.restore();
       } else {
-        cx.beginPath();cx.arc(nd.zx,nd.ny,r,0,Math.PI*2);cx.fillStyle=ng;cx.fill();
+        cx.beginPath(); cx.arc(nd.zx,nd.ny,r,0,Math.PI*2); cx.fillStyle=ng; cx.fill();
       }
-      cx.strokeStyle=done?'#44ff88':hov?'#40d0ff':nd.boss?'#ff8844':nd.miniboss?'#ff88cc':'rgba(100,200,255,.45)';
-      cx.lineWidth=hov||nd.boss?2.5:1.5;cx.stroke();
-      cx.textAlign='center';cx.textBaseline='middle';
-      cx.font=Math.round(r*.88)+'px serif';
-      cx.fillText(done?'⭐':nd.boss?'👑':nd.miniboss?'💀':'⚔',nd.zx,nd.ny);
+      cx.strokeStyle=done?'#44ff88':hov?'#40d0ff':nd.boss?'#ff8844':unlocked?'rgba(100,200,255,.5)':'rgba(255,255,255,.1)';
+      cx.lineWidth=hov||nd.boss?2.5:1.5; cx.stroke();
+      cx.textAlign='center'; cx.textBaseline='middle';
+      cx.font=Math.round(r*.85)+'px serif';
+      cx.fillText(unlocked?(done?'⭐':nd.boss?'👑':nd.miniboss?'💀':'⚔'):'🔒',nd.zx,nd.ny);
     });
 
-    // Partner status
+    // Partner indicator
     if(COOP.conn&&COOP.conn.open){
-      cx.font='bold 12px Nunito,sans-serif';cx.textAlign='left';
-      cx.fillStyle='rgba(100,220,255,.85)';cx.strokeStyle='rgba(0,0,0,.8)';cx.lineWidth=2.5;
-      const txt='🤝 '+COOP.partnerName;
-      cx.strokeText(txt,10,H-12);cx.fillText(txt,10,H-12);
+      cx.font='bold 12px Nunito,sans-serif'; cx.textAlign='left';
+      cx.fillStyle='rgba(100,220,255,.9)'; cx.strokeStyle='rgba(0,0,0,.8)'; cx.lineWidth=2.5;
+      cx.strokeText('🤝 '+COOP.partnerName,10,H-12);
+      cx.fillText('🤝 '+COOP.partnerName,10,H-12);
     }
   }
 
-  // Tooltip
+  // ── Tooltip ──
   function showCoopTT(nd){
-    const done=COOP.completed?.has(nd.id);
+    const done=COOP.completed.has(nd.id);
+    const unlocked=isCoopUnlocked(nd);
     tt.style.display='block';
-    document.getElementById('tt-name').textContent=(done?'✅ ':'')+nd.label+(nd.boss?' 👑 BOSS':nd.miniboss?' ⚠ MINIBOSS':'');
+    document.getElementById('tt-name').textContent=(done?'✅ ':'')+(unlocked?'':'🔒 ')+nd.label+(nd.boss?' 👑 BOSS':nd.miniboss?' ⚠ MINIBOSS':'');
     const enemyNames=nd.enemies?.map(k=>{const e=ENEMY_POOL[k];return e?e.name:k;}).join(', ')||'';
     document.getElementById('tt-info').textContent=nd.zoneName+' — '+enemyNames;
     const goBtn=document.getElementById('tt-go');
     goBtn.textContent=done?'🔄 Repetir':'⚔ ¡Combatir!';
-    goBtn.disabled=false;
+    goBtn.disabled=!unlocked;
     goBtn.onclick=()=>{
       tt.style.display='none';
-      const nodeData={id:nd.id,label:nd.label,zi:nd.zi,ni:nd.ni,enemies:nd.enemies,theme:nd.theme,zoneName:nd.zoneName,boss:nd.boss,miniboss:nd.miniboss};
+      const nd2={id:nd.id,label:nd.label,zi:nd.zi,ni:nd.ni,enemies:nd.enemies,theme:nd.theme,zoneName:nd.zoneName,boss:nd.boss,miniboss:nd.miniboss};
       if(COOP.conn&&COOP.conn.open){
-        // Multiplayer: request partner
-        COOP._pendingNode=nodeData;
-        coopSend({type:'node_request',node:nodeData});
-        coopStatus('⏳ Esperando confirmación de '+(COOP.partnerName||'compañero')+'…','#ffe44d');
-        alert('Petición enviada al compañero. Esperando respuesta…');
+        COOP._pendingNode=nd2;
+        coopSend({type:'node_request',node:nd2});
+        coopStatus('⏳ Esperando a '+(COOP.partnerName||'compañero')+'…','#ffe44d');
+        alert('Petición enviada. Esperando respuesta del compañero…');
       } else {
-        // Solo: start directly
-        startCoopNodeBattle(nodeData);
+        startCoopNodeBattle(nd2);
       }
     };
+    document.getElementById('tt-x').onclick=()=>tt.style.display='none';
   }
 
   cv.onclick=(e)=>{
     const r2=cv.getBoundingClientRect();
-    const mx=e.clientX-r2.left, my=e.clientY-r2.top;
     const nodes=buildCoopLayout(cv.width,cv.height);
-    const hit=nodes.find(nd=>Math.hypot(mx-nd.zx,my-nd.ny)<nd.r+8);
-    if(hit)showCoopTT(hit);else tt.style.display='none';
+    const hit=nodes.find(nd=>Math.hypot(e.clientX-r2.left-nd.zx,e.clientY-r2.top-nd.ny)<nd.r+8);
+    if(hit)showCoopTT(hit); else tt.style.display='none';
   };
   cv.onmousemove=(e)=>{
     const r2=cv.getBoundingClientRect();
-    const mx=e.clientX-r2.left, my=e.clientY-r2.top;
     const nodes=buildCoopLayout(cv.width,cv.height);
-    const hit=nodes.find(nd=>Math.hypot(mx-nd.zx,my-nd.ny)<nd.r+10);
+    const hit=nodes.find(nd=>Math.hypot(e.clientX-r2.left-nd.zx,e.clientY-r2.top-nd.ny)<nd.r+10);
     hoverId=hit?hit.id:null;
   };
 
-  // Back button — reuse tt-x
-  document.getElementById('tt-x').onclick=()=>{tt.style.display='none';};
-
-  // Header showing coop info
-  // (opacity dimming removed — map-hud-gold doesn't exist)
-
-  BS._coliMode=false;
-  stopLoop();
-  showScreen('map-screen');
-
-  // Remove any old back buttons
+  // ── Back/Home buttons ──
   document.querySelectorAll('.coop-back-btn').forEach(b=>b.remove());
   const backBtn=document.createElement('button');
   backBtn.className='btn btn-ghost coop-back-btn';
   backBtn.style.cssText='position:absolute;top:10px;left:10px;z-index:10;font-size:.8rem;padding:5px 12px';
-  backBtn.textContent='← Salir coop';
-  backBtn.onclick=()=>{ backBtn.remove(); stopLoop(); showMapScreen(); };
+  backBtn.textContent='← Menú';
+  backBtn.onclick=()=>{
+    backBtn.remove();homeBtn.remove();
+    stopLoop(); showTitleScreen();
+  };
+  const homeBtn=document.createElement('button');
+  homeBtn.className='btn btn-ghost coop-back-btn';
+  homeBtn.style.cssText='position:absolute;top:10px;left:90px;z-index:10;font-size:.8rem;padding:5px 12px;opacity:.7';
+  homeBtn.textContent='🔄 Coop';
+  homeBtn.onclick=()=>{ backBtn.remove();homeBtn.remove(); stopLoop(); showCoopOverlay(); };
   document.getElementById('map-screen').appendChild(backBtn);
+  document.getElementById('map-screen').appendChild(homeBtn);
 
-  startLoop(()=>{ drawCoopMap(); });
+  showScreen('map-screen');
+  startLoop(()=>drawCoopMap());
 }
 
 /* ═══ TITLE ═══ */
@@ -6001,6 +6019,7 @@ function showMapScreen(){
   document.getElementById('tt-x').onclick=()=>tt.style.display='none';
   document.getElementById('hud-stats-btn').onclick=()=>{stopLoop();showStatsScreen();};
   document.getElementById('hud-gallery-btn').onclick=()=>{stopLoop();showGalleryScreen(showMapScreen);};
+  document.getElementById('hud-menu-btn').onclick=()=>{if(confirm('¿Volver al menú principal?')){stopLoop();showTitleScreen();}};
   showScreen('map-screen');startLoop(drawMap);
 }
 
