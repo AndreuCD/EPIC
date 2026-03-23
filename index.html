@@ -3824,13 +3824,22 @@ function coliLoadPeer(cb){
 // ── Build team data to send ──
 function coliMyData(){
   const active = COLI.myTeam.active;
-  const effs={}, weapons={}, armors={};
+  const stats={}, weapons={}, armors={};
   active.forEach(id=>{
-    effs[id]=getBirdEff(id);
+    // Use buildBirdInst to get EXACT same stats as in battle
+    const inst=buildBirdInst(id);
+    stats[id]={
+      maxHp:inst.maxHp,
+      curAtk:inst.curAtk,
+      curDef:inst.curDef,
+      curSpDmg:inst.curSpDmg,
+      spCh:ALL_BIRDS[id]?.spCh||.3,
+      runeShield:inst.runeShield||0,
+    };
     weapons[id]=GS.equippedWeapons[id]||null;
     armors[id]=GS.equippedArmors[id]||null;
   });
-  return {name:COLI.myName||'Jugador', active, reserve:COLI.myTeam.reserve||[], effs, weapons, armors};
+  return {name:COLI.myName||'Jugador', active, reserve:COLI.myTeam.reserve||[], stats, weapons, armors};
 }
 
 // ── Handle incoming messages ──
@@ -4026,16 +4035,20 @@ function startColiseumBattle(){
 
   // Build rival birds (as "enemies" on right side)
   BS.enemies = COLI.rivalTeam.active.map(id=>{
-    const bd=ALL_BIRDS[id]; if(!bd) return{name:id,maxHp:80,hp:80,atk:18,def:4,curAtk:18,curDef:4,spDmg:30,spCh:.3,buffs:[],draw:()=>{}};
-    const e=COLI.rivalTeam.effs?.[id]||{};
-    const maxHp=bd.maxHp+(e.maxHp||0);
+    const bd=ALL_BIRDS[id];
+    if(!bd) return{name:id,maxHp:80,hp:80,atk:18,def:4,curAtk:18,curDef:4,spDmg:30,spCh:.3,buffs:[],draw:()=>{}};
+    // Use the exact pre-computed stats the rival sent
+    const s=(COLI.rivalTeam.stats||{})[id]||{};
+    const maxHp=s.maxHp||bd.maxHp;
     return{...bd,key:'r_'+id,birdId:id,isRivalBird:true,
       rivalWeapon:(COLI.rivalTeam.weapons||{})[id]||null,
       rivalArmor:(COLI.rivalTeam.armors||{})[id]||null,
-      maxHp,hp:maxHp,
-      atk:bd.atk+(e.atk||0),curAtk:bd.atk+(e.atk||0),
-      def:bd.def+(e.def||0),curDef:bd.def+(e.def||0),
-      spDmg:(bd.spDmg||0)+(e.spDmg||0),buffs:[],
+      maxHp, hp:maxHp+(s.runeShield||0),
+      atk:s.curAtk||bd.atk, curAtk:s.curAtk||bd.atk,
+      def:s.curDef||bd.def,  curDef:s.curDef||bd.def,
+      spDmg:s.curSpDmg||bd.spDmg||0,
+      spCh:s.spCh||bd.spCh||.3,
+      buffs:[],
       draw:(cx,x,y,r,bl)=>bd.draw(cx,x,y,r,bl,0)};
   });
 
@@ -4110,10 +4123,10 @@ function startColiseumBattle(){
     const W=bcv.width,H=bcv.height;
 
     // My birds (left)
-    const bS=[[.5,.5],[.55,.36],[.3,.52],[.56,.68]];
+    const bS=[[.5,.5],[.58,.28],[.22,.55],[.58,.75]]; // wider diamond
     BS.birds.forEach((b,i)=>{
       const s=bS[Math.min(i,3)];
-      const bx0=W*(.04+.34*s[0]), by0=H*(.46+s[1]*.28)+(isAlive(b)?Math.sin(bgT*1.4+i)*4:0);
+      const bx0=W*(.03+.36*s[0]), by0=H*(.42+s[1]*.32)+(isAlive(b)?Math.sin(bgT*1.4+i)*4:0);
       BIRD_POS[i]={x:bx0,y:by0};
       if(!isAlive(b))return;
       const off=ANIM.getBirdOffset(i),shk=ANIM.getBirdHitShake(i);
@@ -4138,11 +4151,11 @@ function startColiseumBattle(){
     });
 
     // Rival birds (right)
-    const eS=[[.5,.5],[.42,.36],[.62,.36],[.5,.68]];
+    const eS=[[.5,.5],[.42,.28],[.72,.55],[.42,.75]]; // wider diamond
     BS.enemies.forEach((e,i)=>{
-      if(i>=4){ENEMY_POS[i]={x:W*.97,y:H*.5};return;}
+      if(i>=4){ENEMY_POS[i]={x:W*.99,y:H*.5};return;}
       const s=eS[Math.min(i,3)];
-      const ex0=W*(.58+.36*s[0]),ey0=H*(.46+s[1]*.28)+(isAlive(e)?Math.sin(bgT*1.2+i)*3:0);
+      const ex0=W*(.60+.36*s[0]),ey0=H*(.42+s[1]*.32)+(isAlive(e)?Math.sin(bgT*1.2+i)*3:0);
       ENEMY_POS[i]={x:ex0,y:ey0};
       if(!isAlive(e))return;
       const shk=ANIM.getEnemyShake(i),ea=ANIM.getEnemyOffset(i);
@@ -6022,7 +6035,7 @@ function startBattle(node,teamIds){
         if(!isAlive(b))return;
         const nb2=BS.birds.length;
         const baseX=W*(0.12+i*(0.14/Math.max(nb2-1,1)));
-        const walkX=baseX+t*W*.55; // walk 55% across screen
+        const walkX=baseX+t*W*.45;
         const walkY=H*.63+Math.sin(t*Math.PI*6+i)*10; // leg bob
         // Shadow
         bcx.save();bcx.globalAlpha=.14;bcx.fillStyle='#000';bcx.beginPath();bcx.ellipse(walkX,H*.71,28,8,0,0,Math.PI*2);bcx.fill();bcx.restore();
@@ -6074,12 +6087,12 @@ function startBattle(node,teamIds){
 
     drawBattleBG(bcx,W,H,bgT+(BS._bgOffset||0),theme);
 
-    /* ── Birds (left side) ── */
+    /* ── Birds (left side) — diamond ── */
     const nb=BS.birds.length;
+    const _bSlots=[[.5,.5],[.58,.25],[.2,.55],[.6,.78]];
     BS.birds.forEach((b,i)=>{
-      // Base position
-      const bxBase=W*(0.12+i*(0.14/Math.max(nb-1,1)));
-      const byBase=H*.63+(isAlive(b)?Math.sin(bgT*1.4+i)*4:0);
+      const _bs=_bSlots[Math.min(i,3)];
+      const bxBase=W*(.03+.36*_bs[0]),byBase=H*(.40+_bs[1]*.35)+(isAlive(b)?Math.sin(bgT*1.4+i)*4:0);
       BIRD_POS[i]={x:bxBase,y:byBase};
       if(!isAlive(b))return;
       // Animation offset
@@ -6089,7 +6102,7 @@ function startBattle(node,teamIds){
       const by=byBase+off.dy+hitShk.dy;
       const br=Math.max(1,34*Math.abs(off.sc)*Math.abs(hitShk.sc));
       // shadow
-      bcx.save();bcx.globalAlpha=.14;bcx.fillStyle='#000';bcx.beginPath();bcx.ellipse(bxBase,H*.71,28,8,0,0,Math.PI*2);bcx.fill();bcx.restore();
+      bcx.save();bcx.globalAlpha=.14;bcx.fillStyle='#000';bcx.beginPath();bcx.ellipse(bxBase,byBase+H*.1,28,8,0,0,Math.PI*2);bcx.fill();bcx.restore();
       bcx.save();bcx.translate(bx,by);bcx.rotate(off.rot);
       // Draw bird with unique armor + weapon sprites
       const aId2=GS.equippedArmors[b.id];
@@ -6123,11 +6136,13 @@ function startBattle(node,teamIds){
       if(b.stunned){bcx.font='13px serif';bcx.textAlign='center';bcx.fillText('❄',dotX,byBase-44);}
     });
 
-    /* ── Enemies (right side) ── */
-    const ne=BS.enemies.length;
+    /* ── Enemies (right side) — diamond ── */
+    const ne=Math.min(BS.enemies.length,4);
+    const _eSlots=[[.5,.5],[.42,.25],[.72,.55],[.42,.78]];
     BS.enemies.forEach((e,i)=>{
-      const exBase=W*(0.64+i*(0.30/Math.max(ne-1,1)));
-      const eyBase=H*.63+(isAlive(e)?Math.sin(bgT*1.2+i)*3:0);
+      if(i>=4){ENEMY_POS[i]={x:W*.98,y:H*.5};return;}
+      const _es=_eSlots[Math.min(i,3)];
+      const exBase=W*(.60+.36*_es[0]),eyBase=H*(.40+_es[1]*.35)+(isAlive(e)?Math.sin(bgT*1.2+i)*3:0);
       ENEMY_POS[i]={x:exBase,y:eyBase};
       if(!isAlive(e))return;
       const shk=ANIM.getEnemyShake(i);
@@ -6135,7 +6150,7 @@ function startBattle(node,teamIds){
       const ex=exBase+shk.dx+eaOff.dx;
       const ey=eyBase+shk.dy+eaOff.dy;
       const er=(e.isGiant?48:30)*shk.sc;
-      bcx.save();bcx.globalAlpha=.13;bcx.fillStyle='#000';bcx.beginPath();bcx.ellipse(exBase,H*.71,e.isGiant?42:26,e.isGiant?11:7,0,0,Math.PI*2);bcx.fill();bcx.restore();
+      bcx.save();bcx.globalAlpha=.13;bcx.fillStyle='#000';bcx.beginPath();bcx.ellipse(exBase,eyBase+H*.1,e.isGiant?42:26,e.isGiant?11:7,0,0,Math.PI*2);bcx.fill();bcx.restore();
       bcx.save();bcx.translate(ex,ey);bcx.rotate(eaOff.rot||0);
       e.draw(bcx,0,0,er,!blink,e);
       bcx.restore();
