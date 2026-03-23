@@ -527,6 +527,20 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-ev
 </div>
 </div>
 
+<!-- COOP INVENTORY -->
+<div id="coop-inv-screen" class="screen">
+  <canvas id="coop-inv-cv"></canvas>
+  <div class="nest-ui">
+    <div class="nest-hdr">
+      <div class="nest-title">🎒 Inventario Coop</div>
+      <div class="nest-gold" id="coop-inv-gold">🪙 0</div>
+      <button id="btn-coop-inv-back" class="btn btn-ghost">← Atrás</button>
+    </div>
+    <div class="nest-tabs" id="coop-inv-tabs"></div>
+    <div id="coop-inv-grid" class="nest-grid"></div>
+  </div>
+</div>
+
 <!-- NEST -->
 <div id="nest-screen" class="screen">
   <canvas id="nest-cv"></canvas>
@@ -3526,25 +3540,27 @@ const ZONE_DROPS=[
 /* ═══ COOP RECIPES ═══ */
 const COOP_RECIPES = {
   // ── MELEE (porra → hacha → espada → dragón) ──
-  cw_m1:{id:'cw_m1',name:'Porra de Madera',   icon:'🪵',type:'weapon',weapType:'melee',   craftTier:1,recipe:{wood:3},              baseEff:{atk:7,spDmg:12}, spEff:'aoe',     spName:'Golpe Giratorio'},
-  cw_m2:{id:'cw_m2',name:'Hacha de Hierro',   icon:'🪓',type:'weapon',weapType:'melee',   craftTier:2,recipe:{iron:3,wood:1},       baseEff:{atk:16,spDmg:24},spEff:'aoe',     spName:'Torbellino'},
-  cw_m3:{id:'cw_m3',name:'Gran Espada',       icon:'⚔️', type:'weapon',weapType:'melee',   craftTier:3,recipe:{crystal:1,iron:3},    baseEff:{atk:26,spDmg:38},spEff:'buff',    spName:'Carga Furiosa'},
-  cw_m4:{id:'cw_m4',name:'Hoja del Dragón',   icon:'🐉',type:'weapon',weapType:'melee',   craftTier:4,recipe:{dragonscale:2,crystal:2},baseEff:{atk:38,spDmg:56},spEff:'aoe',  spName:'Corte Dragón'},
+  // allyBonus: effect given to ally when you use super
+  // type: 'healAlly'(heal N hp), 'atkBuff'(+N atk 2t), 'defBuff'(+N def 2t), 'rageBoost'(rage+N)
+  cw_m1:{id:'cw_m1',allyBonus:{type:'defBuff',val:4},name:'Porra de Madera',   icon:'🪵',type:'weapon',weapType:'melee',   craftTier:1,recipe:{wood:3},              baseEff:{atk:7,spDmg:12}, spEff:'aoe',     spName:'Golpe Giratorio'},
+  cw_m2:{id:'cw_m2',allyBonus:{type:'defBuff',val:8},name:'Hacha de Hierro',   icon:'🪓',type:'weapon',weapType:'melee',   craftTier:2,recipe:{iron:3,wood:1},       baseEff:{atk:16,spDmg:24},spEff:'aoe',     spName:'Torbellino'},
+  cw_m3:{id:'cw_m3',allyBonus:{type:'defBuff',val:14},name:'Gran Espada',       icon:'⚔️', type:'weapon',weapType:'melee',   craftTier:3,recipe:{crystal:1,iron:3},    baseEff:{atk:26,spDmg:38},spEff:'buff',    spName:'Carga Furiosa'},
+  cw_m4:{id:'cw_m4',allyBonus:{type:'defBuff',val:22},name:'Hoja del Dragón',   icon:'🐉',type:'weapon',weapType:'melee',   craftTier:4,recipe:{dragonscale:2,crystal:2},baseEff:{atk:38,spDmg:56},spEff:'aoe',  spName:'Corte Dragón'},
   // ── RANGED (honda → arco → ballesta → cañón) ──
-  cw_r1:{id:'cw_r1',name:'Honda de Piedra',   icon:'🪨',type:'weapon',weapType:'ranged',  craftTier:1,recipe:{leather:2,wood:1},    baseEff:{atk:8,spDmg:14}, spEff:'multienemy',spName:'Pedrada Triple'},
-  cw_r2:{id:'cw_r2',name:'Arco de Madera',    icon:'🏹',type:'weapon',weapType:'ranged',  craftTier:2,recipe:{wood:2,feather:2},    baseEff:{atk:14,spDmg:20},spEff:'multienemy',spName:'Lluvia de Flechas'},
-  cw_r3:{id:'cw_r3',name:'Ballesta de Hierro',icon:'🎯',type:'weapon',weapType:'ranged',  craftTier:3,recipe:{iron:3,feather:1},    baseEff:{atk:22,spDmg:32},spEff:'multienemy',spName:'Disparo Perforante'},
-  cw_r4:{id:'cw_r4',name:'Cañón de Cristal', icon:'💎',type:'weapon',weapType:'ranged',  craftTier:4,recipe:{crystal:3,iron:2},    baseEff:{atk:32,spDmg:48},spEff:'multienemy',spName:'Ráfaga de Cristal'},
+  cw_r1:{id:'cw_r1',allyBonus:{type:'atkBuff',val:4},name:'Honda de Piedra',   icon:'🪨',type:'weapon',weapType:'ranged',  craftTier:1,recipe:{leather:2,wood:1},    baseEff:{atk:8,spDmg:14}, spEff:'multienemy',spName:'Pedrada Triple'},
+  cw_r2:{id:'cw_r2',allyBonus:{type:'atkBuff',val:8},name:'Arco de Madera',    icon:'🏹',type:'weapon',weapType:'ranged',  craftTier:2,recipe:{wood:2,feather:2},    baseEff:{atk:14,spDmg:20},spEff:'multienemy',spName:'Lluvia de Flechas'},
+  cw_r3:{id:'cw_r3',allyBonus:{type:'atkBuff',val:14},name:'Ballesta de Hierro',icon:'🎯',type:'weapon',weapType:'ranged',  craftTier:3,recipe:{iron:3,feather:1},    baseEff:{atk:22,spDmg:32},spEff:'multienemy',spName:'Disparo Perforante'},
+  cw_r4:{id:'cw_r4',allyBonus:{type:'atkBuff',val:22},name:'Cañón de Cristal', icon:'💎',type:'weapon',weapType:'ranged',  craftTier:4,recipe:{crystal:3,iron:2},    baseEff:{atk:32,spDmg:48},spEff:'multienemy',spName:'Ráfaga de Cristal'},
   // ── EXPLOSIVES (bomba → petardo → dinamita → fusión) ──
-  cw_e1:{id:'cw_e1',name:'Bomba de Barro',    icon:'💣',type:'weapon',weapType:'explosive',craftTier:1,recipe:{wood:1,leather:2},   baseEff:{atk:6,spDmg:18}, spEff:'aoe',     spName:'Explosión Barro'},
-  cw_e2:{id:'cw_e2',name:'Petardo de Hierro', icon:'🧨',type:'weapon',weapType:'explosive',craftTier:2,recipe:{iron:2,wood:2},      baseEff:{atk:12,spDmg:30},spEff:'aoe',     spName:'Detonación'},
-  cw_e3:{id:'cw_e3',name:'Dinamita',          icon:'💥',type:'weapon',weapType:'explosive',craftTier:3,recipe:{crystal:1,iron:2,feather:1},baseEff:{atk:18,spDmg:46},spEff:'aoe',spName:'Megaexplosión'},
-  cw_e4:{id:'cw_e4',name:'Bomba de Dragón',   icon:'🔥',type:'weapon',weapType:'explosive',craftTier:4,recipe:{dragonscale:2,iron:2},baseEff:{atk:24,spDmg:65},spEff:'aoe',    spName:'Inferno Total'},
+  cw_e1:{id:'cw_e1',allyBonus:{type:'rageBoost',val:18},name:'Bomba de Barro',    icon:'💣',type:'weapon',weapType:'explosive',craftTier:1,recipe:{wood:1,leather:2},   baseEff:{atk:6,spDmg:18}, spEff:'aoe',     spName:'Explosión Barro'},
+  cw_e2:{id:'cw_e2',allyBonus:{type:'rageBoost',val:28},name:'Petardo de Hierro', icon:'🧨',type:'weapon',weapType:'explosive',craftTier:2,recipe:{iron:2,wood:2},      baseEff:{atk:12,spDmg:30},spEff:'aoe',     spName:'Detonación'},
+  cw_e3:{id:'cw_e3',allyBonus:{type:'rageBoost',val:40},name:'Dinamita',          icon:'💥',type:'weapon',weapType:'explosive',craftTier:3,recipe:{crystal:1,iron:2,feather:1},baseEff:{atk:18,spDmg:46},spEff:'aoe',spName:'Megaexplosión'},
+  cw_e4:{id:'cw_e4',allyBonus:{type:'rageBoost',val:55},name:'Bomba de Dragón',   icon:'🔥',type:'weapon',weapType:'explosive',craftTier:4,recipe:{dragonscale:2,iron:2},baseEff:{atk:24,spDmg:65},spEff:'aoe',    spName:'Inferno Total'},
   // ── MAGIC (varita → cetro → báculo → gema) ──
-  cw_mg1:{id:'cw_mg1',name:'Varita de Madera', icon:'🪄',type:'weapon',weapType:'magic',  craftTier:1,recipe:{wood:2,feather:1},    baseEff:{atk:5,spDmg:16,healBonus:8}, spEff:'heal',spName:'Chispa Curativa'},
-  cw_mg2:{id:'cw_mg2',name:'Cetro de Cristal', icon:'🔮',type:'weapon',weapType:'magic',  craftTier:2,recipe:{crystal:2,feather:1}, baseEff:{atk:10,spDmg:26,healBonus:16},spEff:'heal',spName:'Pulso Arcano'},
-  cw_mg3:{id:'cw_mg3',name:'Báculo Dorado',    icon:'⭐',type:'weapon',weapType:'magic',  craftTier:3,recipe:{crystal:2,iron:1,feather:2},baseEff:{atk:16,spDmg:38,healBonus:26},spEff:'heal',spName:'Lluvia Sagrada'},
-  cw_mg4:{id:'cw_mg4',name:'Gema del Dragón',  icon:'🌟',type:'weapon',weapType:'magic',  craftTier:4,recipe:{dragonscale:1,crystal:3},baseEff:{atk:22,spDmg:52,healBonus:40},spEff:'heal',spName:'Gran Renacimiento'},
+  cw_mg1:{id:'cw_mg1',allyBonus:{type:'healAlly',val:25},name:'Varita de Madera', icon:'🪄',type:'weapon',weapType:'magic',  craftTier:1,recipe:{wood:2,feather:1},    baseEff:{atk:5,spDmg:16,healBonus:8}, spEff:'heal',spName:'Chispa Curativa'},
+  cw_mg2:{id:'cw_mg2',allyBonus:{type:'healAlly',val:45},name:'Cetro de Cristal', icon:'🔮',type:'weapon',weapType:'magic',  craftTier:2,recipe:{crystal:2,feather:1}, baseEff:{atk:10,spDmg:26,healBonus:16},spEff:'heal',spName:'Pulso Arcano'},
+  cw_mg3:{id:'cw_mg3',allyBonus:{type:'healAlly',val:70},name:'Báculo Dorado',    icon:'⭐',type:'weapon',weapType:'magic',  craftTier:3,recipe:{crystal:2,iron:1,feather:2},baseEff:{atk:16,spDmg:38,healBonus:26},spEff:'heal',spName:'Lluvia Sagrada'},
+  cw_mg4:{id:'cw_mg4',allyBonus:{type:'healAlly',val:100},name:'Gema del Dragón',  icon:'🌟',type:'weapon',weapType:'magic',  craftTier:4,recipe:{dragonscale:1,crystal:3},baseEff:{atk:22,spDmg:52,healBonus:40},spEff:'heal',spName:'Gran Renacimiento'},
   // ── ARMORS (T1–T4) ──
   ca1:{id:'ca1',name:'Capucha de Cuero',  icon:'🪖',type:'armor',craftTier:1,recipe:{leather:3},               baseEff:{def:5,maxHp:15}},
   ca2:{id:'ca2',name:'Pechera de Hierro', icon:'🛡️', type:'armor',craftTier:2,recipe:{iron:3,leather:1},         baseEff:{def:12,maxHp:25}},
@@ -3678,13 +3694,13 @@ function totalPotions(){return Object.values(GS.potionStock).reduce((a,b)=>a+b,0
 
 /* ═══ COOP SAVE STATE ═══ */
 let COOP_GS = {
-  level: 1,
-  xp: 0,
-  equippedWeapon: null,  // recipe id
-  equippedArmor: null,   // recipe id
+  level: 1, xp: 0,
+  gold: 50,
+  equippedWeapon: null,
+  equippedArmor: null,
   craftedItems: {},
   weaponUpgrades: {},
-  materials: {},
+  materials: {wood:5,leather:3,iron:0,feather:2,crystal:0,dragonscale:0},
   completedNodes: new Set(),
 };
 const COOP_SAVE_KEY = 'abe_coop_v1';
@@ -3831,8 +3847,20 @@ function applyCheatCode(code){
     Object.keys(ALL_BIRDS).forEach(id=>{GS.trainingLevels[id]={};TRAINING_DEFS.forEach(def=>{GS.trainingLevels[id][def.id]=def.maxLv;});});
     // Give all runes
     GS.craftedRunes=RUNE_DEFS.map(r=>r.id);
+    // Also unlock everything in coop
+    COOP_GS.gold=99999;
+    ['wood','leather','iron','feather','crystal','dragonscale'].forEach(m=>{COOP_GS.materials[m]=99;});
+    Object.values(COOP_RECIPES).forEach(rec=>{
+      COOP_GS.craftedItems[rec.id]={eff:{...rec.baseEff},roll:3};
+    });
+    // Equip best weapon (cw_m4) and armor (ca4)
+    COOP_GS.equippedWeapon='cw_m4';COOP_GS.equippedArmor='ca4';
+    // Complete all coop nodes
+    COOP_ZONES.forEach(z=>z.nodes.forEach(n=>{COOP_GS.completedNodes.add(n.id);}));
+    COOP.completed=new Set([...COOP_GS.completedNodes]);
+    saveCoopGS();
     saveGame();
-    return '✅ TESTEOEPIC activado — todo desbloqueado!';
+    return '✅ TESTEOEPIC activado — todo desbloqueado (SP + Coop)!';
   }
   return '❌ Código no válido';
 }
@@ -5261,12 +5289,143 @@ function showCoopMapScreen(){
   homeBtn.className='btn btn-ghost coop-back-btn';
   homeBtn.style.cssText='position:absolute;top:10px;left:90px;z-index:10;font-size:.8rem;padding:5px 12px;opacity:.7';
   homeBtn.textContent='🔄 Coop';
-  homeBtn.onclick=()=>{ backBtn.remove();homeBtn.remove(); stopLoop(); showCoopOverlay(); };
+  homeBtn.onclick=()=>{ backBtn.remove();homeBtn.remove();invBtn.remove(); stopLoop(); showCoopOverlay(); };
+  const invBtn=document.createElement('button');
+  invBtn.className='btn btn-gold coop-back-btn';
+  invBtn.style.cssText='position:absolute;top:10px;left:180px;z-index:10;font-size:.8rem;padding:5px 12px';
+  invBtn.textContent='🎒 Inventario';
+  invBtn.onclick=()=>{ backBtn.remove();homeBtn.remove();invBtn.remove(); stopLoop(); showCoopInventoryScreen(showCoopMapScreen); };
   document.getElementById('map-screen').appendChild(backBtn);
   document.getElementById('map-screen').appendChild(homeBtn);
+  document.getElementById('map-screen').appendChild(invBtn);
 
   showScreen('map-screen');
   startLoop(()=>drawCoopMap());
+}
+
+function showCoopInventoryScreen(backFn){
+  const cv=document.getElementById('coop-inv-cv');rsCV(cv);const cx=cv.getContext('2d');
+  document.getElementById('btn-coop-inv-back').onclick=()=>{stopLoop();(backFn||showCoopMapScreen)();};
+  let activeTab='weapons';
+
+  function fmtEff(eff){
+    if(!eff)return'–';
+    const p=[];
+    if(eff.atk)p.push('+'+eff.atk+' ATK');if(eff.spDmg)p.push('+'+eff.spDmg+' SP');
+    if(eff.def)p.push('+'+eff.def+' DEF');if(eff.maxHp)p.push('+'+eff.maxHp+' HP');
+    if(eff.healBonus)p.push('+'+eff.healBonus+' Heal');
+    return p.join(' ');
+  }
+  function fmtAllyBonus(ab){
+    if(!ab)return'';
+    if(ab.type==='healAlly')return'💚 Cura +'+ab.val+'HP aliado al usar super';
+    if(ab.type==='atkBuff')return'⚡ +'+ab.val+' ATK aliado (2 turnos)';
+    if(ab.type==='defBuff')return'🛡 +'+ab.val+' DEF aliado (2 turnos)';
+    if(ab.type==='rageBoost')return'🔥 +'+ab.val+' Furia al aliado';
+    return'';
+  }
+
+  function hasMats(recipe){return Object.entries(recipe).every(([m,n])=>(COOP_GS.materials[m]||0)>=n);}
+  function spendMats(recipe){Object.entries(recipe).forEach(([m,n])=>{COOP_GS.materials[m]=(COOP_GS.materials[m]||0)-n;});}
+
+  function renderInv(){
+    document.getElementById('coop-inv-gold').textContent='🪙 '+COOP_GS.gold;
+    // Tabs
+    const tabs=document.getElementById('coop-inv-tabs');tabs.innerHTML='';
+    [{id:'weapons',label:'⚔ Armas'},{id:'armors',label:'🛡 Armaduras'},{id:'materials',label:'🪵 Materiales'}].forEach(t=>{
+      const btn=document.createElement('button');
+      btn.className='btn '+(activeTab===t.id?'btn-gold':'btn-ghost');
+      btn.style.cssText='font-size:.78rem;padding:6px 14px';btn.textContent=t.label;
+      btn.onclick=()=>{activeTab=t.id;renderInv();};tabs.appendChild(btn);
+    });
+
+    const grid=document.getElementById('coop-inv-grid');grid.innerHTML='';
+
+    if(activeTab==='materials'){
+      const matNames={wood:'🪵 Madera',leather:'🦴 Cuero',iron:'⚙️ Hierro',feather:'🪶 Pluma',crystal:'💎 Cristal',dragonscale:'🐉 Escama'};
+      Object.entries(matNames).forEach(([k,label])=>{
+        const d=document.createElement('div');d.className='scard';
+        d.innerHTML='<div style="font-size:1.4rem;margin-bottom:4px">'+label.split(' ')[0]+'</div><div style="font-family:Lilita One,cursive;font-size:.9rem;color:#ffe44d">'+label.split(' ').slice(1).join(' ')+'</div><div style="font-size:.8rem;color:#aaa">x'+(COOP_GS.materials[k]||0)+'</div>';
+        grid.appendChild(d);
+      });
+      return;
+    }
+
+    const isWeapon=activeTab==='weapons';
+    const recipes=Object.values(COOP_RECIPES).filter(r=>r.type===(isWeapon?'weapon':'armor'));
+    recipes.sort((a,b)=>(a.craftTier||0)-(b.craftTier||0));
+    recipes.forEach(rec=>{
+      const card=document.createElement('div');card.className='scard';
+      const crafted=COOP_GS.craftedItems[rec.id];
+      const isEquipped=isWeapon?COOP_GS.equippedWeapon===rec.id:COOP_GS.equippedArmor===rec.id;
+      const canCraft=hasMats(rec.recipe);
+      card.style.borderColor=isEquipped?'#44ff88':crafted?'rgba(200,137,31,.6)':'rgba(200,137,31,.25)';
+      if(isEquipped)card.style.background='rgba(0,40,0,.7)';
+
+      // Header
+      const hdr=document.createElement('div');hdr.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:6px';
+      hdr.innerHTML='<span style="font-size:1.6rem">'+rec.icon+'</span><div><div style="font-family:Lilita One,cursive;font-size:.88rem;color:#ffe44d">'+rec.name+'</div><div style="font-size:.66rem;color:#aaa">Tier '+rec.craftTier+(rec.weapType?' · '+{melee:'Melé',ranged:'Distancia',explosive:'Explosivo',magic:'Magia'}[rec.weapType]:'')+' '+isEquipped?'✅ EQUIPADO':crafted?'🔧 Crafteado':'🔒 Sin craftear'+'</div></div>';
+      card.appendChild(hdr);
+
+      // Stats
+      const eff=crafted?crafted.eff:rec.baseEff;
+      const statDiv=document.createElement('div');statDiv.style.cssText='font-size:.72rem;color:#88deff;margin-bottom:4px';
+      statDiv.textContent=fmtEff(eff);card.appendChild(statDiv);
+
+      // Ally bonus
+      if(isWeapon&&rec.allyBonus){
+        const ab=document.createElement('div');ab.style.cssText='font-size:.68rem;color:#aaffcc;font-style:italic;margin-bottom:6px';
+        ab.textContent=fmtAllyBonus(rec.allyBonus);card.appendChild(ab);
+      }
+
+      // Super name
+      if(isWeapon&&rec.spName){
+        const sp=document.createElement('div');sp.style.cssText='font-size:.66rem;color:#cc88ff;margin-bottom:6px';
+        sp.textContent='✨ Super: '+rec.spName;card.appendChild(sp);
+      }
+
+      // Recipe cost
+      const costDiv=document.createElement('div');costDiv.style.cssText='font-size:.66rem;color:rgba(255,255,255,.45);margin-bottom:8px';
+      costDiv.textContent='Materiales: '+Object.entries(rec.recipe).map(([k,v])=>v+'× '+k).join(', ');card.appendChild(costDiv);
+
+      // Buttons
+      const btnRow=document.createElement('div');btnRow.style.cssText='display:flex;gap:6px;flex-wrap:wrap';
+      if(!crafted){
+        const craftBtn=document.createElement('button');craftBtn.className='btn '+(canCraft?'btn-gold':'btn-ghost');
+        craftBtn.style.cssText='font-size:.72rem;padding:5px 12px';craftBtn.textContent='⚒ Craftear';
+        craftBtn.disabled=!canCraft;
+        craftBtn.onclick=()=>{
+          spendMats(rec.recipe);
+          COOP_GS.craftedItems[rec.id]={eff:{...rec.baseEff},roll:2};
+          saveCoopGS();renderInv();blog('⚒ '+rec.name+' crafteada!','ll-sys');
+        };
+        btnRow.appendChild(craftBtn);
+      } else if(!isEquipped){
+        const eqBtn=document.createElement('button');eqBtn.className='btn btn-teal';
+        eqBtn.style.cssText='font-size:.72rem;padding:5px 12px';eqBtn.textContent='✅ Equipar';
+        eqBtn.onclick=()=>{
+          if(isWeapon)COOP_GS.equippedWeapon=rec.id;
+          else COOP_GS.equippedArmor=rec.id;
+          saveCoopGS();renderInv();
+        };
+        btnRow.appendChild(eqBtn);
+      } else {
+        const ueBtn=document.createElement('button');ueBtn.className='btn btn-ghost';
+        ueBtn.style.cssText='font-size:.72rem;padding:5px 12px;opacity:.6';ueBtn.textContent='Desequipar';
+        ueBtn.onclick=()=>{
+          if(isWeapon)COOP_GS.equippedWeapon=null;
+          else COOP_GS.equippedArmor=null;
+          saveCoopGS();renderInv();
+        };
+        btnRow.appendChild(ueBtn);
+      }
+      card.appendChild(btnRow);
+      grid.appendChild(card);
+    });
+  }
+  renderInv();
+  showScreen('coop-inv-screen');
+  startLoop(()=>drawSky(cx,cv.width,cv.height,bgT,4));
 }
 
 /* ═══ TITLE ═══ */
