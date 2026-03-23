@@ -396,7 +396,7 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-ev
       <button id="btn-ng" class="btn btn-gold">▶ NUEVA PARTIDA</button>
       <button id="btn-continue" class="btn btn-teal" style="display:none">▶ CONTINUAR</button>
       <button id="btn-gallery" class="btn btn-ghost" style="font-size:.85rem;padding:9px 22px">🎨 Galería de Sprites</button>
-      <button id="btn-coop" class="btn btn-ghost" style="font-size:.85rem;padding:9px 22px;margin-top:6px;opacity:.6;border-color:rgba(100,200,255,.3);color:rgba(100,200,255,.7)">🤝 Cooperativo <span style="font-size:.65rem;opacity:.6">(próximamente)</span></button>
+      <button id="btn-coop" class="btn btn-ghost" style="font-size:.85rem;padding:9px 22px;margin-top:6px;border-color:rgba(64,160,200,.5);color:rgba(100,200,255,.9)">🤝 Cooperativo <span style="font-size:.65rem;opacity:.6">(próximamente)</span></button>
       <div class="cheat-row" id="cheat-row">
         <input id="cheat-input" class="cheat-input" type="text" placeholder="🔑 Código secreto..." maxlength="24" autocomplete="off" spellcheck="false"/>
         <button id="btn-cheat" class="btn btn-purple" style="font-size:.78rem;padding:8px 14px">Activar</button>
@@ -482,6 +482,51 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-ev
   </div>
 </div>
 </div>
+<!-- COOP OVERLAY -->
+<div id="coop-ov" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.9);backdrop-filter:blur(10px);overflow-y:auto">
+<div style="max-width:500px;margin:18px auto;background:linear-gradient(180deg,#001020,#000810);border:3px solid #40a0c8;border-radius:20px;padding:20px 16px;position:relative">
+  <button id="coop-close" class="btn btn-ghost" style="position:absolute;top:10px;right:10px;padding:4px 10px;font-size:.8rem">✕</button>
+  <div style="text-align:center;margin-bottom:14px">
+    <div style="font-size:2rem">🤝</div>
+    <div style="font-family:'Lilita One',cursive;font-size:1.4rem;color:#40d0ff">Cooperativo</div>
+    <div style="font-size:.72rem;color:rgba(255,255,255,.35);margin-top:2px">2 jugadores · contra las hordas</div>
+    <input id="coop-name" class="cheat-input" style="margin-top:8px;width:160px;text-align:center;font-size:.9rem;border-color:#40a0c8" maxlength="16" placeholder="Tu nombre…"/>
+  </div>
+
+  <div id="coop-status" style="text-align:center;font-size:.76rem;color:#aaa;margin-bottom:10px;min-height:1.1em">Sin conectar</div>
+
+  <div id="coop-connect-ui">
+    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:10px">
+      <button id="coop-host-btn" class="btn btn-gold" style="font-size:.8rem;padding:8px 16px">🏠 Crear sala</button>
+      <button id="coop-join-btn" class="btn btn-teal" style="font-size:.8rem;padding:8px 16px">🔗 Unirse</button>
+    </div>
+    <div id="coop-host-ui" style="display:none;text-align:center;margin-bottom:8px">
+      <div style="font-size:.7rem;color:rgba(255,255,255,.4);margin-bottom:5px">Tu código:</div>
+      <div id="coop-code" style="font-family:'Lilita One',cursive;font-size:2rem;color:#40d0ff;letter-spacing:8px;background:rgba(0,0,0,.5);border-radius:8px;padding:6px 16px;margin-bottom:6px">···</div>
+      <button id="coop-copy-btn" class="btn btn-ghost" style="font-size:.72rem;padding:5px 12px">📋 Copiar</button>
+    </div>
+    <div id="coop-join-ui" style="display:none;text-align:center;margin-bottom:8px">
+      <div style="font-size:.7rem;color:rgba(255,255,255,.4);margin-bottom:6px">Código del compañero:</div>
+      <div style="display:flex;gap:6px;justify-content:center">
+        <input id="coop-code-in" class="cheat-input" style="width:130px;text-align:center;font-size:1.1rem;letter-spacing:5px;text-transform:uppercase;border-color:#40a0c8" maxlength="6" placeholder="ABC123"/>
+        <button id="coop-connect-btn" class="btn btn-teal" style="font-size:.8rem;padding:8px 12px">Conectar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="coop-ready-ui" style="display:none;text-align:center">
+    <div style="background:rgba(0,40,60,.5);border:1px solid rgba(64,160,200,.3);border-radius:10px;padding:10px;margin-bottom:10px">
+      <div style="font-size:1.1rem">🤝</div>
+      <div id="coop-partner-info" style="font-family:'Lilita One',cursive;color:#40d0ff;font-size:.88rem;margin:3px 0">Compañero conectado</div>
+    </div>
+    <div style="font-family:'Lilita One',cursive;color:#ffe44d;font-size:.82rem;margin-bottom:6px">Zonas cooperativas:</div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px" id="coop-zones"></div>
+    <button id="coop-fight-btn" class="btn btn-gold" style="font-size:.95rem;padding:11px 28px">⚔ ¡Jugar!</button>
+    <div style="font-size:.65rem;color:rgba(255,255,255,.25);margin-top:4px">Ambos deben pulsar Jugar</div>
+  </div>
+</div>
+</div>
+
 <!-- NEST -->
 <div id="nest-screen" class="screen">
   <canvas id="nest-cv"></canvas>
@@ -541,8 +586,8 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-ev
         </div>
         <div class="rage-pct" id="rage-pct">0%</div>
       </div>
+      <button id="btn-reserve" class="btn btn-ghost btn-act" style="display:none;font-size:.74rem;padding:6px 10px">🔄 Reserva</button>
       <div class="act-btns">
-        <button id="btn-reserve" class="btn btn-ghost btn-act" style="display:none">🔄 Reserva</button>
         <button id="btn-potion" class="btn btn-teal btn-act" disabled>🧪 Poción (0)</button>
         <button id="btn-end-turn" class="btn btn-red btn-act" disabled>⏭ Fin Turno</button>
       </div>
@@ -4310,6 +4355,133 @@ function tryReviveFromReserve(){
 // Keep old name as alias
 function coliTryReviveFromReserve(){ return tryReviveFromReserve(); }
 
+/* ═══ COOP MULTIPLAYER ═══ */
+const COOP={
+  peer:null,conn:null,isHost:false,
+  myName:'',partnerName:'',
+  meReady:false,partnerReady:false,
+  selectedZone:null,
+};
+
+function coopSend(obj){if(COOP.conn&&COOP.conn.open)COOP.conn.send(JSON.stringify(obj));}
+function coopStatus(msg,col){const el=document.getElementById('coop-status');if(el){el.textContent=msg;el.style.color=col||'#aaa';}}
+function coopCode(){const ch='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<6;i++)s+=ch[Math.floor(Math.random()*ch.length)];return s;}
+function coopPID(code){return 'abecoop2025-'+code.toUpperCase();}
+
+function coopSetupConn(conn){
+  COOP.conn=conn;
+  conn.on('open',()=>{
+    document.getElementById('coop-connect-ui').style.display='none';
+    document.getElementById('coop-ready-ui').style.display='block';
+    coopStatus('🤝 Conectado — enviando datos…','#40d0ff');
+    coopSend({type:'hello',name:COOP.myName||'Jugador'});
+    coopRenderZones();
+  });
+  conn.on('data',raw=>{
+    let m;try{m=JSON.parse(raw);}catch{return;}
+    if(m.type==='hello'){
+      COOP.partnerName=m.name||'Compañero';
+      const el=document.getElementById('coop-partner-info');
+      if(el)el.textContent='🤝 '+COOP.partnerName+' conectado';
+      coopStatus('✅ '+COOP.partnerName+' listo','#40d0ff');
+      document.getElementById('coop-fight-btn').disabled=false;
+    }
+    if(m.type==='ready'){COOP.partnerReady=true;if(COOP.meReady)startCoopBattle();}
+    if(m.type==='zone'){
+      COOP.selectedZone=m.zone;
+      coopRenderZones();
+      coopStatus('📍 '+COOP.partnerName+' eligió: '+m.zone.name,'#ffe44d');
+    }
+  });
+  conn.on('close',()=>{
+    coopStatus('⚠ Compañero desconectado','#f84');
+    document.getElementById('coop-ready-ui').style.display='none';
+    document.getElementById('coop-connect-ui').style.display='block';
+    COOP.conn=null;COOP.meReady=false;COOP.partnerReady=false;
+  });
+  conn.on('error',e=>coopStatus('❌ '+e.type,'#f44'));
+}
+
+function coopRenderZones(){
+  const el=document.getElementById('coop-zones');if(!el)return;
+  el.innerHTML='';
+  COOP_ZONES.forEach(z=>{
+    const btn=document.createElement('button');
+    btn.className='btn btn-ghost';
+    btn.style.cssText='font-size:.72rem;padding:6px 8px;text-align:left;'+(COOP.selectedZone?.id===z.id?'border-color:#40d0ff;color:#40d0ff;':'');
+    btn.textContent=z.name;
+    btn.onclick=()=>{
+      COOP.selectedZone=z;
+      coopSend({type:'zone',zone:z});
+      coopRenderZones();
+    };
+    el.appendChild(btn);
+  });
+}
+
+function showCoopOverlay(){
+  const ov=document.getElementById('coop-ov');ov.style.display='block';
+  COOP.meReady=false;COOP.partnerReady=false;
+  document.getElementById('coop-fight-btn').disabled=true;
+  document.getElementById('coop-ready-ui').style.display='none';
+  document.getElementById('coop-connect-ui').style.display='block';
+  document.getElementById('coop-host-ui').style.display='none';
+  document.getElementById('coop-join-ui').style.display='none';
+  const ni=document.getElementById('coop-name');
+  ni.value=COOP.myName||'';ni.oninput=()=>{COOP.myName=ni.value.trim()||'Jugador';};
+
+  document.getElementById('coop-host-btn').onclick=()=>{
+    document.getElementById('coop-host-ui').style.display='block';
+    document.getElementById('coop-join-ui').style.display='none';
+    coopStatus('Iniciando…','#aaa');
+    coliLoadPeer(()=>{ // reuse PeerJS loader
+      if(COOP.peer&&!COOP.peer.destroyed)COOP.peer.destroy();
+      const code=coopCode();COOP.isHost=true;
+      COOP.peer=new Peer(coopPID(code));
+      COOP.peer.on('open',()=>{document.getElementById('coop-code').textContent=code;coopStatus('⏳ Esperando compañero…','#ffe44d');});
+      COOP.peer.on('connection',conn=>coopSetupConn(conn));
+      COOP.peer.on('error',e=>coopStatus('❌ '+e.type,'#f44'));
+    });
+  };
+  document.getElementById('coop-join-btn').onclick=()=>{
+    document.getElementById('coop-join-ui').style.display='block';
+    document.getElementById('coop-host-ui').style.display='none';
+  };
+  document.getElementById('coop-connect-btn').onclick=()=>{
+    const code=document.getElementById('coop-code-in').value.trim().toUpperCase();
+    if(!code){coopStatus('⚠ Introduce el código','#f84');return;}
+    coopStatus('Conectando…','#aaa');
+    coliLoadPeer(()=>{
+      if(COOP.peer&&!COOP.peer.destroyed)COOP.peer.destroy();
+      COOP.isHost=false;COOP.peer=new Peer();
+      COOP.peer.on('open',()=>{coopSetupConn(COOP.peer.connect(coopPID(code),{reliable:true,serialization:'json'}));});
+      COOP.peer.on('error',e=>coopStatus('❌ '+(e.type==='peer-unavailable'?'Código incorrecto':e.type),'#f44'));
+    });
+  };
+  document.getElementById('coop-copy-btn').onclick=()=>{
+    const code=document.getElementById('coop-code').textContent;
+    navigator.clipboard?.writeText(code);
+    document.getElementById('coop-copy-btn').textContent='✅';
+    setTimeout(()=>document.getElementById('coop-copy-btn').textContent='📋 Copiar',2000);
+  };
+  document.getElementById('coop-fight-btn').onclick=(ev)=>{
+    ev.stopPropagation();
+    if(!COOP.selectedZone){coopStatus('⚠ Elige una zona primero','#f84');return;}
+    COOP.meReady=true;coopSend({type:'ready'});
+    coopStatus('✅ Listo — esperando compañero…','#ffe44d');
+    document.getElementById('coop-fight-btn').disabled=true;
+    if(COOP.partnerReady)startCoopBattle();
+  };
+  document.getElementById('coop-close').onclick=(ev)=>{ev.stopPropagation();ov.style.display='none';};
+  ov.onclick=(e)=>{if(e.target===ov)ov.style.display='none';};
+}
+
+function startCoopBattle(){
+  // Placeholder — battle engine for coop coming in next update
+  document.getElementById('coop-ov').style.display='none';
+  alert('🤝 ¡Modo cooperativo próximamente!\n\nZona: '+(COOP.selectedZone?.name||'?')+'\nCompañero: '+COOP.partnerName);
+}
+
 /* ═══ TITLE ═══ */
 {
   const cv=document.getElementById('title-cv');rsCV(cv);const cx=cv.getContext('2d');
@@ -4325,7 +4497,7 @@ function coliTryReviveFromReserve(){ return tryReviveFromReserve(); }
   };
   document.getElementById('btn-continue').onclick=()=>{stopLoop();showMapScreen();};
   document.getElementById('btn-gallery').onclick=()=>{stopLoop();showGalleryScreen(showTitleScreen);};
-  document.getElementById('btn-coop').onclick=()=>{alert('🤝 Modo Cooperativo\n\nPróximamente — podrás unir fuerzas con otro jugador para combatir contra enemigos juntos.');};
+  document.getElementById('btn-coop').onclick=()=>{showCoopOverlay();};
   document.getElementById('btn-reset').onclick=()=>{
     if(confirm('¿Seguro? Se borrará todo el progreso.'))resetGame();
     location.reload();
