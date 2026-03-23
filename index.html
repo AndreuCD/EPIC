@@ -4543,11 +4543,12 @@ function coopSetupConn(conn){
 function showCoopOverlay(){
   const ov=document.getElementById('coop-ov');ov.style.display='block';
   COOP.meReady=false;COOP.partnerReady=false;
-  document.getElementById('coop-fight-btn').disabled=true;
-  document.getElementById('coop-ready-ui').style.display='none';
+  document.getElementById('coop-fight-btn').disabled=false;
+  document.getElementById('coop-ready-ui').style.display='block';
   document.getElementById('coop-connect-ui').style.display='block';
   document.getElementById('coop-host-ui').style.display='none';
   document.getElementById('coop-join-ui').style.display='none';
+  document.getElementById('coop-partner-info').textContent='Sin compañero — puedes ir al mapa solo';
   const ni=document.getElementById('coop-name');
   ni.value=COOP.myName||'';ni.oninput=()=>{COOP.myName=ni.value.trim()||'Jugador';};
   // Gear info
