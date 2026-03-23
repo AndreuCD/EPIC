@@ -3679,7 +3679,7 @@ let GS={
   blueprints:[],
   materials:{},
   upgradeLevels:{},
-  potionStock:{},
+  potionStock:{pu1:3},
   currentNode:null,
   // Tracking stats
   totalGoldEarned:0,
@@ -3841,7 +3841,7 @@ function applyCheatCode(code){
     // Add all blueprints
     GS.blueprints=Object.keys(RECIPES);
     // Add potions
-    GS.potionStock={small:20,large:10};
+    GS.potionStock={pu1:20,pu2:10};
     // Max training for all birds
     GS.trainingLevels={};
     Object.keys(ALL_BIRDS).forEach(id=>{GS.trainingLevels[id]={};TRAINING_DEFS.forEach(def=>{GS.trainingLevels[id][def.id]=def.maxLv;});});
@@ -6898,9 +6898,9 @@ function buildEnemyInst(key,scaleFactor){
   // chargeDmg scales 60% — still dangerous but not instant-kill
   const hp=Math.round(d.maxHp*sf);
   const defSf=1+(sf-1)*.30;  // e.g. sf=2.3 → defSf=1.39
-  const atkSf=1+(sf-1)*.80;  // e.g. sf=2.3 → atkSf=2.04
+  const atkSf=1+(sf-1)*.60;  // reduced from .80 → enemies do ~20% less damage
   const def=Math.round(d.def*defSf);
-  const atk=Math.round(d.atk*atkSf);
+  const atk=Math.round(d.atk*atkSf*.82); // -18% base atk
   const spDmg=Math.round((d.spDmg||0)*atkSf);
   const chargeDmg=Math.round((d.chargeDmg||0)*(1+(sf-1)*.60));
   return{...d,key,hp,maxHp:hp,atk,curAtk:atk,def,curDef:def,spDmg,chargeDmg,buffs:[],chargeT:d.isGiant?0:undefined};
@@ -7881,20 +7881,20 @@ function fireSuper(birdIdx){const usedBirdIdx=birdIdx;
       switch(bird.spEff){
         case'buff':{
           const t=BS.enemies[enemyIdx];
-          const d=dealDmg(t,Math.round(bird.curSpDmg*multi));
+          const d=dealDmg(t,Math.round(bird.curSpDmg*multi),BS._coliMode?0.4:1);
           bird.curDef+=14;
           blog(`   💥 ${d} dmg + DEF↑${bird.curDef}`,'ll-s');
           showDmgNum('ep'+enemyIdx,d,'dn-s');refreshPlate(t,'ep'+enemyIdx);break;
         }
         case'multi':{
           const t=BS.enemies[enemyIdx];let tot=0;
-          for(let i=0;i<5;i++)if(isAlive(t))tot+=dealDmg(t,Math.round((bird.curSpDmg+(bird.curMultiBonus||0))*multi));
+          for(let i=0;i<5;i++)if(isAlive(t))tot+=dealDmg(t,Math.round((bird.curSpDmg+(bird.curMultiBonus||0))*multi),BS._coliMode?0.4:1);
           blog(`   ⚡ 5× = ${tot} dmg`,'ll-s');showDmgNum('ep'+enemyIdx,tot,'dn-s');refreshPlate(t,'ep'+enemyIdx);
           break;
         }
         case'aoe':
           BS.enemies.forEach((e,i)=>{if(isAlive(e)){
-            const d=dealDmg(e,Math.round(bird.curSpDmg*multi));
+            const d=dealDmg(e,Math.round(bird.curSpDmg*multi),BS._coliMode?0.4:1);
             blog(`   💥 ${d} to ${e.name}`,'ll-s');
             showDmgNum('ep'+i,d,'dn-s');refreshPlate(e,'ep'+i);
             const ep2=ENEMY_POS[i];if(ep2)ANIM.addProjectile('explosion',ep2.x,ep2.y,ep2.x,ep2.y,'#ff6600');
@@ -7908,7 +7908,7 @@ function fireSuper(birdIdx){const usedBirdIdx=birdIdx;
         }
         case'multienemy':
           BS.enemies.forEach((e,i)=>{if(isAlive(e)){
-            const d=dealDmg(e,Math.round((bird.curSpDmg+(bird.curMultiBonus||0))*multi));
+            const d=dealDmg(e,Math.round((bird.curSpDmg+(bird.curMultiBonus||0))*multi),BS._coliMode?0.4:1);
             blog(`   ⚡ ${d} to ${e.name}`,'ll-s');showDmgNum('ep'+i,d,'dn-s');refreshPlate(e,'ep'+i);
             const ep2=ENEMY_POS[i];const bp3=BIRD_POS[birdIdx];
             if(ep2&&bp3)ANIM.addProjectile('arrow',bp3.x,bp3.y,ep2.x,ep2.y,'#ff88ff');
