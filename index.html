@@ -3912,7 +3912,7 @@ function coliOnMsg(raw){
   }
 
   // Battle messages — routed to active handler
-  if(m.type==='action' || m.type==='endturn' || m.type==='battleover'){
+  if(m.type==='action'||m.type==='endturn'||m.type==='battleover'||m.type==='reserve_in'||m.type==='ally_sync'||m.type==='start_battle'){
     if(COLI._onBattleMsg) COLI._onBattleMsg(m);
   }
 }
@@ -4477,9 +4477,135 @@ function showCoopOverlay(){
 }
 
 function startCoopBattle(){
-  // Placeholder — battle engine for coop coming in next update
   document.getElementById('coop-ov').style.display='none';
-  alert('🤝 ¡Modo cooperativo próximamente!\n\nZona: '+(COOP.selectedZone?.name||'?')+'\nCompañero: '+COOP.partnerName);
+  COOP.meReady=false; COOP.partnerReady=false;
+  showCoopMapScreen();
+}
+
+function showCoopMapScreen(){
+  const cv=document.getElementById('map-cv'); rsCV(cv); const cx=cv.getContext('2d');
+  const tt=document.getElementById('map-tt'); tt.style.display='none';
+  let hoverId=null;
+
+  // Build coop node layout
+  function buildCoopLayout(W,H){
+    const nodes=[];
+    const PAD=50, zW=(W-PAD*2)/COOP_ZONES.length;
+    COOP_ZONES.forEach((zone,zi)=>{
+      const n=zone.nodes||8;
+      for(let ni=0;ni<n;ni++){
+        const frac=n>1?(zi%2===0?ni/(n-1):1-ni/(n-1)):0.5;
+        const zx=PAD+zi*zW+zW*0.5;
+        const ny=H*(0.2+frac*0.6);
+        nodes.push({
+          id:'c'+zi+'n'+ni, zoneId:zone.id, zi, ni,
+          label:zone.name+' '+(ni+1),
+          zx, ny, r:16,
+          boss:ni===n-1, miniboss:ni===Math.floor(n/2),
+          enemies:zone.enemies||['pig'],
+          theme:zone.theme||0, zoneName:zone.name,
+          isCoop:true,
+        });
+      }
+    });
+    return nodes;
+  }
+
+  function drawCoopMap(){
+    const W=cv.width, H=cv.height;
+    drawSky(cx,W,H,bgT,4); // dark theme
+    cx.save();cx.fillStyle='rgba(0,20,40,.6)';cx.fillRect(0,0,W,H);cx.restore();
+
+    const PAD=50, zW=(W-PAD*2)/COOP_ZONES.length;
+    COOP_ZONES.forEach((zone,zi)=>{
+      const x0=PAD+zi*zW, xMid=x0+zW/2;
+      cx.save();cx.globalAlpha=.1;
+      cx.fillStyle=['#226644','#882200','#002266','#220044','#004422','#002244','#440000'][zi]||'#222';
+      cx.fillRect(x0,H*.08,zW-4,H*.86);cx.restore();
+      if(zi>0){cx.save();cx.globalAlpha=.4;cx.strokeStyle='rgba(100,200,255,.4)';cx.lineWidth=1.5;cx.setLineDash([5,4]);cx.beginPath();cx.moveTo(x0,H*.08);cx.lineTo(x0,H*.94);cx.stroke();cx.setLineDash([]);cx.restore();}
+      cx.font='bold 11px Nunito,sans-serif';cx.textAlign='center';
+      cx.fillStyle='rgba(100,200,255,.7)';cx.strokeStyle='rgba(0,0,0,.8)';cx.lineWidth=3;
+      cx.strokeText(zone.name,xMid,H*.13);cx.fillText(zone.name,xMid,H*.13);
+    });
+
+    const nodes=buildCoopLayout(W,H);
+    // Draw connections
+    nodes.forEach((nd,i)=>{
+      if(i>0&&nodes[i-1].zi===nd.zi){
+        cx.save();cx.strokeStyle='rgba(100,200,255,.3)';cx.lineWidth=2;cx.setLineDash([4,4]);
+        cx.beginPath();cx.moveTo(nodes[i-1].zx,nodes[i-1].ny);cx.lineTo(nd.zx,nd.ny);cx.stroke();
+        cx.setLineDash([]);cx.restore();
+      }
+    });
+
+    nodes.forEach(nd=>{
+      const done=COOP.completed?.has(nd.id);
+      const hov=nd.id===hoverId;
+      const r=nd.r;
+      const ng=cx.createRadialGradient(nd.zx-r*.3,nd.ny-r*.3,r*.1,nd.zx,nd.ny,r);
+      ng.addColorStop(0,done?'#44ee44':hov?'#88ddff':nd.boss?'#ff6600':nd.miniboss?'#ff44aa':'#2255aa');
+      ng.addColorStop(1,done?'#117711':hov?'#3399cc':nd.boss?'#881100':nd.miniboss?'#881144':'#0a1144');
+      cx.beginPath();cx.arc(nd.zx,nd.ny,r,0,Math.PI*2);cx.fillStyle=ng;cx.fill();
+      cx.strokeStyle=hov?'#88ddff':nd.boss?'#ff8844':'rgba(100,200,255,.5)';cx.lineWidth=2;cx.stroke();
+      cx.textAlign='center';cx.textBaseline='middle';cx.font=Math.round(r*.9)+'px serif';
+      cx.fillText(done?'⭐':nd.boss?'👑':nd.miniboss?'💀':'⚔',nd.zx,nd.ny);
+    });
+  }
+
+  // Tooltip
+  function showCoopTT(nd){
+    tt.style.display='block';
+    document.getElementById('tt-name').textContent=nd.label+(nd.boss?' 👑 BOSS':nd.miniboss?' 💀 MINIBOSS':'');
+    document.getElementById('tt-info').textContent='Zona cooperativa · '+(nd.enemies?.join(', ')||'');
+    const goBtn=document.getElementById('tt-go');
+    goBtn.textContent='⚔ Luchar';
+    goBtn.disabled=false;
+    goBtn.onclick=()=>{
+      tt.style.display='none';
+      // For now, show placeholder — battle engine will be connected later
+      alert('Combate cooperativo en esta zona: '+nd.label+'\n\nProximamente!');
+    };
+  }
+
+  cv.onclick=(e)=>{
+    const r=cv.getBoundingClientRect();
+    const mx=e.clientX-r.left, my=e.clientY-r.top;
+    const W=cv.width,H=cv.height;
+    const nodes=buildCoopLayout(W,H);
+    const hit=nodes.find(nd=>Math.hypot(mx-nd.zx,my-nd.ny)<nd.r+6);
+    if(hit)showCoopTT(hit);
+    else tt.style.display='none';
+  };
+  cv.onmousemove=(e)=>{
+    const r=cv.getBoundingClientRect();
+    const mx=e.clientX-r.left, my=e.clientY-r.top;
+    const W=cv.width,H=cv.height;
+    const nodes=buildCoopLayout(W,H);
+    const hit=nodes.find(nd=>Math.hypot(mx-nd.zx,my-nd.ny)<nd.r+8);
+    hoverId=hit?hit.id:null;
+  };
+
+  // Back button — reuse tt-x
+  document.getElementById('tt-x').onclick=()=>{tt.style.display='none';};
+
+  // Header showing coop info
+  document.getElementById('map-hud-gold').parentElement.style.opacity='.4';
+
+  BS._coliMode=false;
+  showScreen('map-screen');
+  startLoop(()=>{ drawCoopMap(); });
+
+  // Add back button
+  const backBtn=document.createElement('button');
+  backBtn.className='btn btn-ghost';
+  backBtn.style.cssText='position:absolute;top:10px;left:10px;z-index:10;font-size:.8rem;padding:5px 12px';
+  backBtn.textContent='← Salir coop';
+  backBtn.onclick=()=>{
+    backBtn.remove();
+    document.getElementById('map-hud-gold').parentElement.style.opacity='';
+    stopLoop(); showMapScreen();
+  };
+  document.getElementById('map-screen').appendChild(backBtn);
 }
 
 /* ═══ TITLE ═══ */
