@@ -396,6 +396,7 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-ev
       <button id="btn-ng" class="btn btn-gold">▶ NUEVA PARTIDA</button>
       <button id="btn-continue" class="btn btn-teal" style="display:none">▶ CONTINUAR</button>
       <button id="btn-gallery" class="btn btn-ghost" style="font-size:.85rem;padding:9px 22px">🎨 Galería de Sprites</button>
+      <button id="btn-coop" class="btn btn-ghost" style="font-size:.85rem;padding:9px 22px;margin-top:6px;opacity:.6;border-color:rgba(100,200,255,.3);color:rgba(100,200,255,.7)">🤝 Cooperativo <span style="font-size:.65rem;opacity:.6">(próximamente)</span></button>
       <div class="cheat-row" id="cheat-row">
         <input id="cheat-input" class="cheat-input" type="text" placeholder="🔑 Código secreto..." maxlength="24" autocomplete="off" spellcheck="false"/>
         <button id="btn-cheat" class="btn btn-purple" style="font-size:.78rem;padding:8px 14px">Activar</button>
@@ -440,11 +441,13 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-ev
   </div>
 
   <!-- TEAM PICKER -->
-  <div style="font-family:'Lilita One',cursive;color:#ffe44d;font-size:.82rem;margin-bottom:4px">⚔ Equipo activo (3)</div>
+  <div style="font-family:'Lilita One',cursive;color:#ffe44d;font-size:.82rem;margin-bottom:4px">⚔ Activos <span style="font-size:.65rem;color:rgba(255,255,255,.35)">(3 max)</span></div>
   <div id="coli-active" style="display:flex;gap:6px;flex-wrap:wrap;min-height:60px;border:2px dashed rgba(255,200,0,.2);border-radius:8px;padding:6px;margin-bottom:8px"></div>
+  <div style="font-family:'Lilita One',cursive;color:#66aaff;font-size:.78rem;margin-bottom:4px">🔄 Reservas <span style="font-size:.62rem;color:rgba(255,255,255,.3)">(entran si muere alguien)</span></div>
+  <div id="coli-reserve" style="display:flex;gap:6px;flex-wrap:wrap;min-height:44px;border:2px dashed rgba(80,120,255,.18);border-radius:8px;padding:6px;margin-bottom:8px"></div>
   <div style="font-family:'Lilita One',cursive;color:#888;font-size:.78rem;margin-bottom:4px">🐦 Sin asignar</div>
-  <div id="coli-pool" style="display:flex;gap:6px;flex-wrap:wrap;min-height:44px;border:2px dashed rgba(100,150,255,.15);border-radius:8px;padding:6px;margin-bottom:12px"></div>
-  <div style="font-size:.68rem;color:rgba(255,100,100,.7);text-align:center;margin-bottom:12px">🚫 Sin pociones en el Coliseo</div>
+  <div id="coli-pool" style="display:flex;gap:6px;flex-wrap:wrap;min-height:44px;border:2px dashed rgba(100,150,255,.15);border-radius:8px;padding:6px;margin-bottom:10px"></div>
+  <div style="font-size:.68rem;color:rgba(255,100,100,.7);text-align:center;margin-bottom:10px">🚫 Sin pociones en el Coliseo</div>
 
   <!-- CONNECTION -->
   <div style="border-top:1px solid rgba(255,200,0,.18);padding-top:12px">
@@ -3909,40 +3912,53 @@ function showColiseumOverlay(){
 
   // ── Team picker ──
   let active=[...GS.unlockedBirds.slice(0,3)];
-  COLI.myTeam.active=active;
+  let reserve=[];
+  COLI.myTeam.active=active; COLI.myTeam.reserve=reserve;
 
-  function mkCard(id, inActive){
+  function mkCard(id, slot){ // slot: 'active'|'reserve'|'pool'
     const bd=ALL_BIRDS[id]; if(!bd)return null;
     const d=document.createElement('div');
-    d.className='coli-bird'+(inActive?' active-slot':'');
+    d.className='coli-bird'+(slot==='active'?' active-slot':slot==='reserve'?' reserve-slot':'');
     const cv=document.createElement('canvas');
     cv.width=44;cv.height=44;
     cv.style.cssText='position:static!important;inset:auto!important;display:block;width:44px!important;height:44px!important;margin:0 auto 2px';
     bd.draw(cv.getContext('2d'),22,26,15,false,0); d.appendChild(cv);
     const nm=document.createElement('div');nm.className='coli-name';nm.textContent=bd.name;d.appendChild(nm);
+    const badge=document.createElement('div');
+    badge.style.cssText='font-size:.56rem;font-family:Lilita One,cursive;color:rgba(255,255,255,.4);text-align:center;margin-top:1px';
+    badge.textContent=slot==='active'?'ACTIVO':slot==='reserve'?'RESERVA':'';
+    if(badge.textContent)d.appendChild(badge);
     d.onclick=()=>{
-      if(inActive){ active=active.filter(x=>x!==id); }
+      if(slot==='active'){ active=active.filter(x=>x!==id); }
+      else if(slot==='reserve'){ reserve=reserve.filter(x=>x!==id); }
       else if(active.length<3){ active.push(id); }
-      COLI.myTeam.active=active;
+      else { reserve.push(id); }
+      COLI.myTeam.active=active; COLI.myTeam.reserve=reserve;
       renderTeam();
-      // Resend hello if connected
       if(COLI.conn&&COLI.conn.open) coliSend({type:'hello',...coliMyData()});
     };
     return d;
   }
 
   function renderTeam(){
-    COLI.myTeam.active=active;
+    COLI.myTeam.active=active; COLI.myTeam.reserve=reserve;
     const ae=document.getElementById('coli-active'); ae.innerHTML='';
-    active.forEach(id=>{ const c=mkCard(id,true); if(c)ae.appendChild(c); });
+    active.forEach(id=>{ const c=mkCard(id,'active'); if(c)ae.appendChild(c); });
     for(let i=active.length;i<3;i++){
       const e=document.createElement('div');
       e.style.cssText='min-width:54px;min-height:60px;border:2px dashed rgba(255,200,0,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;color:rgba(255,200,0,.2);font-size:.9rem';
       e.textContent='+'; ae.appendChild(e);
     }
+    const re=document.getElementById('coli-reserve'); re.innerHTML='';
+    reserve.forEach(id=>{ const c=mkCard(id,'reserve'); if(c)re.appendChild(c); });
+    if(!reserve.length){
+      const e=document.createElement('div');
+      e.style.cssText='color:rgba(255,255,255,.18);font-size:.68rem;padding:5px;font-family:Lilita One,cursive';
+      e.textContent='Sin reservas — pulsa un pájaro del pool'; re.appendChild(e);
+    }
     const pe=document.getElementById('coli-pool'); pe.innerHTML='';
-    GS.unlockedBirds.filter(id=>!active.includes(id)).forEach(id=>{
-      const c=mkCard(id,false); if(c)pe.appendChild(c);
+    GS.unlockedBirds.filter(id=>!active.includes(id)&&!reserve.includes(id)).forEach(id=>{
+      const c=mkCard(id,'pool'); if(c)pe.appendChild(c);
     });
   }
   renderTeam();
@@ -4082,6 +4098,22 @@ function startColiseumBattle(){
 
   // ── Incoming battle messages ──
   COLI._onBattleMsg=(m)=>{
+    if(m.type==='ally_sync'){
+      // Apply buff/heal result to rival's bird (shown as BS.enemies on our screen)
+      // fromIdx = their bird that did the action = our BS.enemies[fromIdx]
+      // toIdx = their bird that received = our BS.enemies[toIdx]
+      const ef=BS.enemies[m.fromIdx], et=BS.enemies[m.toIdx];
+      if(et){
+        if(m.eff==='heal'||m.eff==='inspire'||m.eff==='haste'||m.eff==='shield'||m.eff==='fortify'){
+          et.hp=m.toHp; et.curDef=m.toCurDef; et.curAtk=m.toCurAtk;
+          refreshPlate(et,'ep'+m.toIdx);
+          const ep2=ENEMY_POS[m.toIdx];
+          if(m.eff==='heal'&&ep2)spawnHeal(ep2.x,ep2.y,10);
+          else if(ep2)spawnBuff(ep2.x,ep2.y);
+          blog('💚 '+(ef?.name||'Rival')+' apoya a '+(et?.name||'?'),'ll-ally');
+        }
+      }
+    }
     if(m.type==='reserve_in'){
       // Rival brought in a reserve bird
       const bd=ALL_BIRDS[m.birdId];
@@ -4291,6 +4323,7 @@ function coliTryReviveFromReserve(){ return tryReviveFromReserve(); }
   };
   document.getElementById('btn-continue').onclick=()=>{stopLoop();showMapScreen();};
   document.getElementById('btn-gallery').onclick=()=>{stopLoop();showGalleryScreen(showTitleScreen);};
+  document.getElementById('btn-coop').onclick=()=>{alert('🤝 Modo Cooperativo\n\nPróximamente — podrás unir fuerzas con otro jugador para combatir contra enemigos juntos.');};
   document.getElementById('btn-reset').onclick=()=>{
     if(confirm('¿Seguro? Se borrará todo el progreso.'))resetGame();
     location.reload();
@@ -6319,7 +6352,15 @@ function dEnd(e){
 /* ── ALLY ACTION ── */
 function doAllyAction(fromIdx,toIdx){
   if(BS.phase!=='player')return;
-  // ally actions are local only in PvP — no network sync needed for buffs
+  if(BS._coliMode){
+    // Sync ally actions to rival so they see the buff on their enemy
+    const eff=BS.birds[fromIdx]?.allyEff||'buff';
+    const bird=BS.birds[fromIdx]; const tgt=BS.birds[toIdx];
+    // We send the RESULT (hp, curDef, curAtk) so rival stays in sync
+    coliSend({type:'ally_sync',fromIdx,toIdx,eff,
+      fromHp:bird?.hp||0,toHp:tgt?.hp||0,
+      toCurDef:tgt?.curDef||0,toCurAtk:tgt?.curAtk||0});
+  }
   BS.phase='busy';setTurnUI('busy');
   const from=BS.birds[fromIdx];const to=BS.birds[toIdx];
   const eff=from.allyEff;
