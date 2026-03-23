@@ -4082,6 +4082,23 @@ function startColiseumBattle(){
 
   // ── Incoming battle messages ──
   COLI._onBattleMsg=(m)=>{
+    if(m.type==='reserve_in'){
+      // Rival brought in a reserve bird
+      const bd=ALL_BIRDS[m.birdId];
+      if(bd&&m.slot>=0&&m.slot<BS.enemies.length){
+        const s=m.stats||{};
+        const maxHp=s.maxHp||bd.maxHp;
+        BS.enemies[m.slot]={...bd,key:'r_'+m.birdId,birdId:m.birdId,isRivalBird:true,
+          rivalWeapon:(COLI.rivalTeam?.weapons||{})[m.birdId]||null,
+          rivalArmor:(COLI.rivalTeam?.armors||{})[m.birdId]||null,
+          maxHp,hp:maxHp,
+          curAtk:s.curAtk||bd.atk,curDef:s.curDef||bd.def,
+          spDmg:s.curSpDmg||bd.spDmg||0,buffs:[],
+          draw:(cx,x,y,r,bl)=>bd.draw(cx,x,y,r,bl,0)};
+        buildPanels();
+        blog('🔄 '+bd.name+' (reserva rival)','ll-sys');
+      }
+    }
     if(m.type==='action'){
       // Rival attacked one of my birds
       const myBird=BS.birds[m.myIdx];
@@ -4123,10 +4140,10 @@ function startColiseumBattle(){
     const W=bcv.width,H=bcv.height;
 
     // My birds (left)
-    const bS=[[.5,.5],[.58,.28],[.22,.55],[.58,.75]]; // wider diamond
+    const bS=[[.55,.50],[.80,.25],[.80,.78],[.30,.50]];
     BS.birds.forEach((b,i)=>{
       const s=bS[Math.min(i,3)];
-      const bx0=W*(.03+.36*s[0]), by0=H*(.42+s[1]*.32)+(isAlive(b)?Math.sin(bgT*1.4+i)*4:0);
+      const bx0=W*(.02+.40*s[0]), by0=H*(.30+s[1]*.44)+(isAlive(b)?Math.sin(bgT*1.4+i)*4:0);
       BIRD_POS[i]={x:bx0,y:by0};
       if(!isAlive(b))return;
       const off=ANIM.getBirdOffset(i),shk=ANIM.getBirdHitShake(i);
@@ -4151,11 +4168,11 @@ function startColiseumBattle(){
     });
 
     // Rival birds (right)
-    const eS=[[.5,.5],[.42,.28],[.72,.55],[.42,.75]]; // wider diamond
+    const eS=[[.45,.50],[.20,.25],[.20,.78],[.70,.50]];
     BS.enemies.forEach((e,i)=>{
       if(i>=4){ENEMY_POS[i]={x:W*.99,y:H*.5};return;}
       const s=eS[Math.min(i,3)];
-      const ex0=W*(.60+.36*s[0]),ey0=H*(.42+s[1]*.32)+(isAlive(e)?Math.sin(bgT*1.2+i)*3:0);
+      const ex0=W*(.58+.40*s[0]),ey0=H*(.30+s[1]*.44)+(isAlive(e)?Math.sin(bgT*1.2+i)*3:0);
       ENEMY_POS[i]={x:ex0,y:ey0};
       if(!isAlive(e))return;
       const shk=ANIM.getEnemyShake(i),ea=ANIM.getEnemyOffset(i);
@@ -4228,6 +4245,31 @@ function coliEnd(iWon){
       if(s)s.textContent=iWon?`¡Ganaste a ${COLI.rivalName}!`:`${COLI.rivalName} ganó esta vez…`;
     },80);
   },600);
+}
+
+function coliTryReviveFromReserve(){
+  // In coli mode, if a bird just died, bring in next reserve
+  if(!BS._coliMode)return false;
+  const reserves=(COLI.myTeam?.reserve)||[];
+  if(!reserves.length)return false;
+  // Find first dead bird slot
+  const deadIdx=BS.birds.findIndex(b=>!isAlive(b));
+  if(deadIdx<0)return false;
+  const nextId=reserves.find(id=>!BS.birds.some(b=>b.id===id));
+  if(!nextId)return false;
+  // Remove from reserve, add to active slot
+  COLI.myTeam.reserve=reserves.filter(id=>id!==nextId);
+  const inst=buildBirdInst(nextId);
+  BS.birds[deadIdx]=inst;
+  BS.birds[deadIdx].hp=inst.maxHp; // full HP
+  buildPanels();
+  blog('🔄 '+inst.name+' entra como reserva!','ll-sys');
+  spawnConfetti(12);
+  // Tell rival a reserve came in
+  coliSend({type:'reserve_in',slot:deadIdx,birdId:nextId,stats:{
+    maxHp:inst.maxHp,curAtk:inst.curAtk,curDef:inst.curDef,curSpDmg:inst.curSpDmg
+  }});
+  return true;
 }
 
 /* ═══ TITLE ═══ */
@@ -6089,10 +6131,11 @@ function startBattle(node,teamIds){
 
     /* ── Birds (left side) — diamond ── */
     const nb=BS.birds.length;
-    const _bSlots=[[.5,.5],[.58,.25],[.2,.55],[.6,.78]];
+    // Diamond: front-center, back-top, back-bottom, mid-back
+    const _bSlots=[[.55,.50],[.80,.25],[.80,.78],[.30,.50]];
     BS.birds.forEach((b,i)=>{
       const _bs=_bSlots[Math.min(i,3)];
-      const bxBase=W*(.03+.36*_bs[0]),byBase=H*(.40+_bs[1]*.35)+(isAlive(b)?Math.sin(bgT*1.4+i)*4:0);
+      const bxBase=W*(.02+.40*_bs[0]),byBase=H*(.30+_bs[1]*.44)+(isAlive(b)?Math.sin(bgT*1.4+i)*4:0);
       BIRD_POS[i]={x:bxBase,y:byBase};
       if(!isAlive(b))return;
       // Animation offset
@@ -6138,11 +6181,11 @@ function startBattle(node,teamIds){
 
     /* ── Enemies (right side) — diamond ── */
     const ne=Math.min(BS.enemies.length,4);
-    const _eSlots=[[.5,.5],[.42,.25],[.72,.55],[.42,.78]];
+    const _eSlots=[[.45,.50],[.20,.25],[.20,.78],[.70,.50]];
     BS.enemies.forEach((e,i)=>{
-      if(i>=4){ENEMY_POS[i]={x:W*.98,y:H*.5};return;}
+      if(i>=4){ENEMY_POS[i]={x:W*.99,y:H*.5};return;}
       const _es=_eSlots[Math.min(i,3)];
-      const exBase=W*(.60+.36*_es[0]),eyBase=H*(.40+_es[1]*.35)+(isAlive(e)?Math.sin(bgT*1.2+i)*3:0);
+      const exBase=W*(.58+.40*_es[0]),eyBase=H*(.30+_es[1]*.44)+(isAlive(e)?Math.sin(bgT*1.2+i)*3:0);
       ENEMY_POS[i]={x:exBase,y:eyBase};
       if(!isAlive(e))return;
       const shk=ANIM.getEnemyShake(i);
@@ -6413,7 +6456,7 @@ function showDmgNum(domId,amount,cls){
 }
 
 /* ── DAMAGE MATH ── */
-function dealDmg(tgt,raw){const d=Math.max(1,raw-tgt.curDef);tgt.hp=Math.max(0,tgt.hp-d);return d;}
+function dealDmg(tgt,raw,mult){const m=mult||1;const d=Math.max(1,Math.round((raw-tgt.curDef)*m));tgt.hp=Math.max(0,tgt.hp-d);return d;}
 
 /* ── BUFF TICK ── */
 function tickBuffs(ent){
@@ -6445,7 +6488,7 @@ function doAttack(){
   const at=animTypeFor(bird.id,null);
   playAttackAnim(bird.id,birdIdx,enemyIdx,at,
     ()=>{// onHit
-      const d=dealDmg(tgt,bird.curAtk);
+      const d=dealDmg(tgt,bird.curAtk,BS._coliMode?0.4:1);
       GS.totalDamageDealt=(GS.totalDamageDealt||0)+d;
       addRage(rageFromDmg(d,RAGE_PER_DEALT));
       blog(`⚔ ${bird.name} → ${tgt.name}: ${d} dmg`,'ll-b');
@@ -6811,7 +6854,7 @@ function doEnemyTurn(){
           if(t<1){requestAnimationFrame(gStep);}
           else{
             if((ANIM.active?ANIM.active.type:null)==='enemy')ANIM.active=null;
-            if(BS.birds.every(b=>!isAlive(b))){setTimeout(()=>showResult(false),400);return;}
+            if(BS.birds.every(b=>!isAlive(b))){if(!coliTryReviveFromReserve())setTimeout(()=>showResult(false),400);return;}
             if(seq===alive.length-1){
               setTimeout(()=>{
                 BS.birds.forEach(b=>{if(isAlive(b))tickBuffs(b);});
@@ -6854,7 +6897,7 @@ function doEnemyTurn(){
         if((ANIM.active?ANIM.active.type:null)==='enemy')ANIM.active.t=t;
         if(!hitFired2&&t>=.48){
           hitFired2=true;
-          const d=dealDmg(tb,sp?(e.spDmg||e.chargeDmg||50):e.curAtk||e.atk);
+          const d=dealDmg(tb,sp?(e.spDmg||e.chargeDmg||50):e.curAtk||e.atk,BS._coliMode?0.4:1);
           addRage(rageFromDmg(d,RAGE_PER_RECV));
           blog(sp?`💥 ${e.name}: ${e.spName} \u2192 ${d} to ${tb.name}`:`🐷 ${e.name} hits ${tb.name} for ${d}`,'ll-e');
           showDmgNum('bp'+ti,d,'dn-a');refreshPlate(tb,'bp'+ti);
@@ -6863,7 +6906,7 @@ function doEnemyTurn(){
         else{
           if((ANIM.active?ANIM.active.type:null)==='enemy')ANIM.active=null;
           ANIM.projectiles=ANIM.projectiles.filter(p=>p.type!=='arrow'||p.t>.8);
-          if(BS.birds.every(b=>!isAlive(b))){setTimeout(()=>showResult(false),400);return;}
+          if(BS.birds.every(b=>!isAlive(b))){if(!coliTryReviveFromReserve())setTimeout(()=>showResult(false),400);return;}
           if(seq===alive.length-1){
             setTimeout(()=>{
               BS.birds.forEach(b=>{if(isAlive(b))tickBuffs(b);});
