@@ -4470,6 +4470,109 @@ function tryReviveFromReserve(){
 // Keep old name as alias
 function coliTryReviveFromReserve(){ return tryReviveFromReserve(); }
 
+
+/* ═══ COOP ZONES — 7 zones, 10 nodes each ═══ */
+const COOP_ZONES=[
+  { id:'cz0', name:'🌿 Pantano Verdoso',   theme:1, color:'#1a4a1a',
+    nodes:[
+      {id:'cz0n0',label:'Entrada del Pantano',  enemies:['pig','pig'],           boss:false},
+      {id:'cz0n1',label:'Sendero Lodoso',        enemies:['pig','pig2'],          boss:false},
+      {id:'cz0n2',label:'Ciénaga Profunda',      enemies:['pig2','pig2'],         boss:false},
+      {id:'cz0n3',label:'Emboscada',             enemies:['pig','pig','pig2'],    boss:false},
+      {id:'cz0n4',label:'Claro del Pantano',     enemies:['pig2','helmet'],       boss:false},
+      {id:'cz0n5',label:'Nido de Ranas',         enemies:['pig2','pig2','pig'],   boss:false},
+      {id:'cz0n6',label:'Puente Podrido',        enemies:['helmet','pig2'],       boss:false},
+      {id:'cz0n7',label:'Caverna Húmeda',        enemies:['helmet','pig2','pig'], boss:false},
+      {id:'cz0n8',label:'Guarida Cenagosa',      enemies:['helmet','helmet'],     boss:false,miniboss:true},
+      {id:'cz0n9',label:'El Pantanero',          enemies:['corporal','pig2','pig2'],boss:true},
+    ]
+  },
+  { id:'cz1', name:'🔥 Fábrica Ardiente',  theme:3, color:'#4a1a00',
+    nodes:[
+      {id:'cz1n0',label:'Entrada a la Fábrica', enemies:['pig2','pig'],          boss:false},
+      {id:'cz1n1',label:'Sala de Calderas',      enemies:['pyro','pig'],          boss:false},
+      {id:'cz1n2',label:'Pasillo de Vapor',      enemies:['pyro','pig2'],         boss:false},
+      {id:'cz1n3',label:'Zona de Ensamblaje',    enemies:['helmet','pyro'],       boss:false},
+      {id:'cz1n4',label:'Almacén de Lava',       enemies:['pyro','pyro'],         boss:false},
+      {id:'cz1n5',label:'Torre de Humo',         enemies:['corporal','pyro'],     boss:false},
+      {id:'cz1n6',label:'Horno Principal',       enemies:['pyro','helmet','pig'], boss:false},
+      {id:'cz1n7',label:'Control Central',       enemies:['corporal','pyro'],     boss:false},
+      {id:'cz1n8',label:'Núcleo de Fusión',      enemies:['corporal','pyro','pyro'],boss:false,miniboss:true},
+      {id:'cz1n9',label:'El Incinerador',        enemies:['giant_brute','pyro'],  boss:true},
+    ]
+  },
+  { id:'cz2', name:'❄️ Tundra Helada',     theme:1, color:'#001a3a',
+    nodes:[
+      {id:'cz2n0',label:'Meseta Glacial',        enemies:['ice','pig'],           boss:false},
+      {id:'cz2n1',label:'Sendero Nevado',        enemies:['ice','pig2'],          boss:false},
+      {id:'cz2n2',label:'Lago Congelado',        enemies:['ice','ice'],           boss:false},
+      {id:'cz2n3',label:'Cueva de Hielo',        enemies:['ice','helmet'],        boss:false},
+      {id:'cz2n4',label:'Ventisca',              enemies:['ice','pig2','pig'],    boss:false},
+      {id:'cz2n5',label:'Fortaleza Ártica',      enemies:['helmet','ice'],        boss:false},
+      {id:'cz2n6',label:'Tormenta Polar',        enemies:['corporal','ice'],      boss:false},
+      {id:'cz2n7',label:'Cripta Helada',         enemies:['ice','ice','helmet'],  boss:false},
+      {id:'cz2n8',label:'El Yeti Congelado',     enemies:['giant_shaman','ice'],  boss:false,miniboss:true},
+      {id:'cz2n9',label:'Rey del Hielo',         enemies:['giant_tank','ice','ice'],boss:true},
+    ]
+  },
+  { id:'cz3', name:'🌑 Caverna Oscura',    theme:4, color:'#0a001a',
+    nodes:[
+      {id:'cz3n0',label:'Boca de la Cueva',      enemies:['ninja','pig'],         boss:false},
+      {id:'cz3n1',label:'Túnel Ciego',           enemies:['ninja','pig2'],        boss:false},
+      {id:'cz3n2',label:'Sala de las Sombras',   enemies:['ninja','ninja'],       boss:false},
+      {id:'cz3n3',label:'Pasaje Prohibido',      enemies:['necro','pig2'],        boss:false},
+      {id:'cz3n4',label:'Altar Oscuro',          enemies:['necro','ninja'],       boss:false},
+      {id:'cz3n5',label:'Guarida Subterránea',   enemies:['phantom','ninja'],     boss:false},
+      {id:'cz3n6',label:'Cámara Maldita',        enemies:['necro','phantom'],     boss:false},
+      {id:'cz3n7',label:'Cripta del Señor',      enemies:['necro','ninja','pig'], boss:false},
+      {id:'cz3n8',label:'Sombra Invocada',       enemies:['giant_sorcerer','necro'],boss:false,miniboss:true},
+      {id:'cz3n9',label:'El Señor Oscuro',       enemies:['giant_sorcerer','phantom','necro'],boss:true},
+    ]
+  },
+  { id:'cz4', name:'⚡ Torre Eléctrica',   theme:2, color:'#1a1a00',
+    nodes:[
+      {id:'cz4n0',label:'Base de la Torre',      enemies:['archer','pig'],        boss:false},
+      {id:'cz4n1',label:'Sala de Generadores',   enemies:['archer','pig2'],       boss:false},
+      {id:'cz4n2',label:'Piso del Rayo',         enemies:['archer','archer'],     boss:false},
+      {id:'cz4n3',label:'Zona de Alta Tensión',  enemies:['wizard','archer'],     boss:false},
+      {id:'cz4n4',label:'Cámara de Truenos',     enemies:['berserker','archer'],  boss:false},
+      {id:'cz4n5',label:'Núcleo Eléctrico',      enemies:['wizard','berserker'],  boss:false},
+      {id:'cz4n6',label:'Sala de Control',       enemies:['fortress','archer'],   boss:false},
+      {id:'cz4n7',label:'Tormenta Eléctrica',    enemies:['wizard','archer','archer'],boss:false},
+      {id:'cz4n8',label:'El Relampagueante',     enemies:['giant_brute','wizard'],boss:false,miniboss:true},
+      {id:'cz4n9',label:'Maestro del Trueno',    enemies:['giant_sorcerer','wizard','archer'],boss:true},
+    ]
+  },
+  { id:'cz5', name:'🌊 Abismo Marino',     theme:1, color:'#001a2a',
+    nodes:[
+      {id:'cz5n0',label:'Orilla Rocosa',         enemies:['pig','pig2'],          boss:false},
+      {id:'cz5n1',label:'Arrecife Peligroso',    enemies:['pig2','helmet'],       boss:false},
+      {id:'cz5n2',label:'Cueva Submarina',       enemies:['ice','pig2'],          boss:false},
+      {id:'cz5n3',label:'Corriente Oscura',      enemies:['troll','pig'],         boss:false},
+      {id:'cz5n4',label:'Ruinas Ahogadas',       enemies:['troll','helmet'],      boss:false},
+      {id:'cz5n5',label:'Fosa Abisal',           enemies:['troll','troll'],       boss:false},
+      {id:'cz5n6',label:'El Leviatán Duerme',    enemies:['giant_brute','troll'], boss:false},
+      {id:'cz5n7',label:'Vórtice Marino',        enemies:['troll','troll','pig'], boss:false},
+      {id:'cz5n8',label:'Kraken Menor',          enemies:['giant_tank','troll'],  boss:false,miniboss:true},
+      {id:'cz5n9',label:'Señor del Abismo',      enemies:['giant_tank','troll','ice'],boss:true},
+    ]
+  },
+  { id:'cz6', name:'💀 Ciudadela Final',   theme:4, color:'#1a0000',
+    nodes:[
+      {id:'cz6n0',label:'Puerta de la Ciudadela',enemies:['corporal','knight'],   boss:false},
+      {id:'cz6n1',label:'Murallas Exteriores',   enemies:['knight','fortress'],   boss:false},
+      {id:'cz6n2',label:'Patio de Armas',        enemies:['berserker','knight'],  boss:false},
+      {id:'cz6n3',label:'Torre del Vigía',       enemies:['archer','wizard','knight'],boss:false},
+      {id:'cz6n4',label:'Mazmorra Real',         enemies:['necro','berserker'],   boss:false},
+      {id:'cz6n5',label:'Sala del Trono',        enemies:['king','fortress'],     boss:false},
+      {id:'cz6n6',label:'Guardia Real',          enemies:['king','knight','archer'],boss:false},
+      {id:'cz6n7',label:'El Último Bastión',     enemies:['giant_colossus','king'],boss:false},
+      {id:'cz6n8',label:'La Guardia Inmortal',   enemies:['giant_colossus','fortress','necro'],boss:false,miniboss:true},
+      {id:'cz6n9',label:'👑 El Gran Cerdo Cósmico',enemies:['giant_colossus','king','pyro','wizard'],boss:true},
+    ]
+  },
+];
+
 /* ═══ COOP MULTIPLAYER ═══ */
 const COOP={
   peer:null,conn:null,isHost:false,
@@ -4848,32 +4951,32 @@ function showCoopMapScreen(){
   const tt=document.getElementById('map-tt'); tt.style.display='none';
   let hoverId=null;
 
-  // Build coop node layout
+  // Build coop node layout from COOP_ZONES node definitions
   function buildCoopLayout(W,H){
     const nodes=[];
-    const PAD=50, zW=(W-PAD*2)/COOP_ZONES.length;
+    const PAD=36, zW=(W-PAD*2)/COOP_ZONES.length;
     COOP_ZONES.forEach((zone,zi)=>{
-      const n=zone.nodes||8;
-      for(let ni=0;ni<n;ni++){
+      const zNodes=zone.nodes||[];
+      const n=zNodes.length;
+      zNodes.forEach((nd,ni)=>{
+        // Zigzag layout within each zone
         const frac=n>1?(zi%2===0?ni/(n-1):1-ni/(n-1)):0.5;
         const zx=PAD+zi*zW+zW*0.5;
-        const ny=H*(0.2+frac*0.6);
+        const ny=H*(0.13+frac*0.78);
         nodes.push({
-          id:'c'+zi+'n'+ni, zoneId:zone.id, zi, ni,
-          label:zone.name+' '+(ni+1),
-          zx, ny, r:16,
-          boss:ni===n-1, miniboss:ni===Math.floor(n/2),
-          enemies:zone.enemies||['pig'],
+          ...nd,
+          zi, ni, zx, ny, r:nd.boss?20:nd.miniboss?17:14,
           theme:zone.theme||0, zoneName:zone.name,
+          zoneColor:zone.color||'#111',
           isCoop:true,
         });
-      }
+      });
     });
     return nodes;
   }
 
-  const _ZONE_COLS=['#226644','#993300','#003388','#330066','#005533','#003355','#550000'];
-  const _ZONE_THEMES=[1,3,1,4,2,1,4];
+  const _ZONE_COLS=COOP_ZONES.map(z=>z.color||'#111');
+  const _ZONE_THEMES=COOP_ZONES.map(z=>z.theme||0);
 
   function drawCoopMap(){
     const W=cv.width,H=cv.height;
@@ -4903,8 +5006,8 @@ function showCoopMapScreen(){
       cx.strokeText(zone.name,x0+zW/2,H*.04+14);
       cx.fillText(zone.name,x0+zW/2,H*.04+14);
       // progress
-      const done=(COOP.completed?[...COOP.completed].filter(id=>id.startsWith('c'+zi)).length:0);
-      const tot=zone.nodes||8;
+      const done=(COOP.completed?[...COOP.completed].filter(id=>id.startsWith('cz'+zi+'n')).length:0);
+      const tot=(zone.nodes||[]).length||8;
       cx.fillStyle='rgba(0,0,0,.4)';cx.fillRect(x0+8,H*.04+18,zW-18,4);
       if(done>0){const pg=cx.createLinearGradient(x0+8,0,x0+zW-10,0);pg.addColorStop(0,'#40d0ff');pg.addColorStop(1,'#0088ff');
         cx.fillStyle=pg;cx.fillRect(x0+8,H*.04+18,(zW-18)*(done/tot),4);}
@@ -4913,15 +5016,17 @@ function showCoopMapScreen(){
 
     const nodes=buildCoopLayout(W,H);
     // Connections within zone
+    // Draw connections within each zone
     const byZone={};
     nodes.forEach(nd=>{(byZone[nd.zi]=byZone[nd.zi]||[]).push(nd);});
     Object.values(byZone).forEach(zNodes=>{
       zNodes.sort((a,b)=>a.ni-b.ni);
       for(let i=1;i<zNodes.length;i++){
         const a=zNodes[i-1],b=zNodes[i];
-        const done=COOP.completed?.has(a.id);
-        cx.save();cx.strokeStyle=done?'rgba(100,255,100,.5)':'rgba(100,200,255,.25)';
-        cx.lineWidth=2;cx.setLineDash([4,4]);
+        const doneA=COOP.completed?.has(a.id);
+        cx.save();cx.globalAlpha=.7;
+        cx.strokeStyle=doneA?'rgba(80,255,80,.6)':'rgba(150,200,255,.3)';
+        cx.lineWidth=doneA?2.5:1.5;cx.setLineDash([4,4]);
         cx.beginPath();cx.moveTo(a.zx,a.ny);cx.lineTo(b.zx,b.ny);cx.stroke();
         cx.setLineDash([]);cx.restore();
       }
@@ -4959,42 +5064,42 @@ function showCoopMapScreen(){
 
   // Tooltip
   function showCoopTT(nd){
+    const done=COOP.completed?.has(nd.id);
     tt.style.display='block';
-    document.getElementById('tt-name').textContent=nd.label+(nd.boss?' 👑 BOSS':nd.miniboss?' 💀 MINIBOSS':'');
-    document.getElementById('tt-info').textContent='Zona cooperativa · '+(nd.enemies?.join(', ')||'');
+    document.getElementById('tt-name').textContent=(done?'✅ ':'')+nd.label+(nd.boss?' 👑 BOSS':nd.miniboss?' ⚠ MINIBOSS':'');
+    const enemyNames=nd.enemies?.map(k=>{const e=ENEMY_POOL[k];return e?e.name:k;}).join(', ')||'';
+    document.getElementById('tt-info').textContent=nd.zoneName+' — '+enemyNames;
     const goBtn=document.getElementById('tt-go');
-    goBtn.textContent='⚔ Luchar';
+    goBtn.textContent=done?'🔄 Repetir':'⚔ ¡Combatir!';
     goBtn.disabled=false;
     goBtn.onclick=()=>{
       tt.style.display='none';
-      COOP._pendingNode=nd;
-      coopSend({type:'node_request',node:{id:nd.id,label:nd.label,zi:nd.zi,ni:nd.ni,enemies:nd.enemies,theme:nd.theme,zoneName:nd.zoneName}});
-      coopStatus('⏳ Esperando que '+COOP.partnerName+' acepte…','#ffe44d');
-      // Also set up local pending — if partner accepts we'll both get startCoopNodeBattle
-      if(confirm('¿Iniciar: '+nd.label+'? (Se pedirá confirmación al compañero)')){
-        // wait for partner accept via message
-        coopStatus('⏳ Esperando confirmación de '+COOP.partnerName+'…','#ffe44d');
+      const nodeData={id:nd.id,label:nd.label,zi:nd.zi,ni:nd.ni,enemies:nd.enemies,theme:nd.theme,zoneName:nd.zoneName,boss:nd.boss,miniboss:nd.miniboss};
+      if(COOP.conn&&COOP.conn.open){
+        // Multiplayer: request partner
+        COOP._pendingNode=nodeData;
+        coopSend({type:'node_request',node:nodeData});
+        coopStatus('⏳ Esperando confirmación de '+(COOP.partnerName||'compañero')+'…','#ffe44d');
+        alert('Petición enviada al compañero. Esperando respuesta…');
       } else {
-        COOP._pendingNode=null;
+        // Solo: start directly
+        startCoopNodeBattle(nodeData);
       }
     };
   }
 
   cv.onclick=(e)=>{
-    const r=cv.getBoundingClientRect();
-    const mx=e.clientX-r.left, my=e.clientY-r.top;
-    const W=cv.width,H=cv.height;
-    const nodes=buildCoopLayout(W,H);
-    const hit=nodes.find(nd=>Math.hypot(mx-nd.zx,my-nd.ny)<nd.r+6);
-    if(hit)showCoopTT(hit);
-    else tt.style.display='none';
+    const r2=cv.getBoundingClientRect();
+    const mx=e.clientX-r2.left, my=e.clientY-r2.top;
+    const nodes=buildCoopLayout(cv.width,cv.height);
+    const hit=nodes.find(nd=>Math.hypot(mx-nd.zx,my-nd.ny)<nd.r+8);
+    if(hit)showCoopTT(hit);else tt.style.display='none';
   };
   cv.onmousemove=(e)=>{
-    const r=cv.getBoundingClientRect();
-    const mx=e.clientX-r.left, my=e.clientY-r.top;
-    const W=cv.width,H=cv.height;
-    const nodes=buildCoopLayout(W,H);
-    const hit=nodes.find(nd=>Math.hypot(mx-nd.zx,my-nd.ny)<nd.r+8);
+    const r2=cv.getBoundingClientRect();
+    const mx=e.clientX-r2.left, my=e.clientY-r2.top;
+    const nodes=buildCoopLayout(cv.width,cv.height);
+    const hit=nodes.find(nd=>Math.hypot(mx-nd.zx,my-nd.ny)<nd.r+10);
     hoverId=hit?hit.id:null;
   };
 
