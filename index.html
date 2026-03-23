@@ -5002,23 +5002,22 @@ function showCoopMapScreen(){
   document.getElementById('tt-x').onclick=()=>{tt.style.display='none';};
 
   // Header showing coop info
-  document.getElementById('map-hud-gold').parentElement.style.opacity='.4';
+  // (opacity dimming removed — map-hud-gold doesn't exist)
 
   BS._coliMode=false;
+  stopLoop();
   showScreen('map-screen');
-  startLoop(()=>{ drawCoopMap(); });
 
-  // Add back button
+  // Remove any old back buttons
+  document.querySelectorAll('.coop-back-btn').forEach(b=>b.remove());
   const backBtn=document.createElement('button');
-  backBtn.className='btn btn-ghost';
+  backBtn.className='btn btn-ghost coop-back-btn';
   backBtn.style.cssText='position:absolute;top:10px;left:10px;z-index:10;font-size:.8rem;padding:5px 12px';
   backBtn.textContent='← Salir coop';
-  backBtn.onclick=()=>{
-    backBtn.remove();
-    document.getElementById('map-hud-gold').parentElement.style.opacity='';
-    stopLoop(); showMapScreen();
-  };
+  backBtn.onclick=()=>{ backBtn.remove(); stopLoop(); showMapScreen(); };
   document.getElementById('map-screen').appendChild(backBtn);
+
+  startLoop(()=>{ drawCoopMap(); });
 }
 
 /* ═══ TITLE ═══ */
