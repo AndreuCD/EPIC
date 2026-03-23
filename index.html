@@ -4616,8 +4616,8 @@ function showCoopOverlay(){
 
 function startCoopBattle(){
   document.getElementById('coop-ov').style.display='none';
-  COOP.meReady=false; COOP.partnerReady=false;
   COOP.completed=COOP.completed||new Set();
+  stopLoop();
   showCoopMapScreen();
 }
 
