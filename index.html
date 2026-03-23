@@ -213,18 +213,18 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-ev
 .b-title{font-family:'Lilita One',cursive;font-size:.92rem;color:#ffe44d;letter-spacing:2px}
 .b-wave{font-size:.73rem;color:rgba(255,255,255,.7);background:rgba(0,0,0,.45);
   border:1px solid rgba(200,137,31,.4);border-radius:16px;padding:3px 11px}
-.b-arena{flex:1;display:grid;grid-template-columns:210px 1fr 210px;gap:6px;
-  padding:6px 9px;overflow:hidden;min-height:0}
-.b-side{display:flex;flex-direction:column;gap:6px;overflow-y:auto;
+.b-arena{flex:1;display:grid;grid-template-columns:190px 1fr 190px;gap:5px;
+  padding:5px 8px;overflow:hidden;min-height:0}
+.b-side{display:flex;flex-direction:column;gap:5px;overflow-y:auto;
   scrollbar-width:thin;scrollbar-color:rgba(200,137,31,.2) transparent}
-.b-mid{display:flex;flex-direction:column;gap:6px;align-items:center;min-width:0}
-.drag-hint{font-family:'Lilita One',cursive;font-size:.75rem;color:rgba(255,210,50,.85);
+.b-mid{display:flex;flex-direction:column;gap:5px;align-items:center;min-width:0}
+.drag-hint{font-family:'Lilita One',cursive;font-size:.72rem;color:rgba(255,210,50,.85);
   background:rgba(0,0,0,.55);border:1px solid rgba(255,200,0,.3);border-radius:16px;
-  padding:3px 12px;pointer-events:none;text-align:center;flex-shrink:0;transition:opacity .3s}
-.b-log{background:rgba(4,2,0,.8);border:2px solid rgba(200,137,31,.38);border-radius:10px;
-  padding:6px 8px;flex:1;overflow-y:auto;width:100%;min-height:0;
-  scrollbar-width:thin;scrollbar-color:rgba(200,137,31,.22) transparent}
-.ll{font-size:.67rem;color:rgba(255,255,255,.9);line-height:1.5;padding:2px 3px;border-radius:3px;
+  padding:2px 10px;pointer-events:none;text-align:center;flex-shrink:0;transition:opacity .3s}
+.b-log{background:rgba(4,2,0,.75);border:1px solid rgba(200,137,31,.28);border-radius:8px;
+  padding:4px 6px;max-height:110px;overflow-y:auto;width:100%;
+  scrollbar-width:thin;scrollbar-color:rgba(200,137,31,.2) transparent;flex-shrink:0}
+.ll{font-size:.58rem;color:rgba(255,255,255,.85);line-height:1.4;padding:1px 2px;border-radius:2px;
   animation:lin .2s ease}
 @keyframes lin{from{opacity:0;transform:translateX(-5px)}to{opacity:1;transform:translateX(0)}}
 .ll-b{color:#88deff}.ll-e{color:#ff9898}.ll-s{color:#cc99ff;font-weight:700}
@@ -523,10 +523,11 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-ev
       <span class="b-wave"  id="b-wave">–</span>
     </div>
     <div class="b-arena">
-      <div class="b-side" id="panel-birds"></div>
-      <div class="b-mid">
-        <div class="drag-hint" id="drag-hint">Drag bird → enemy to attack · Drag → ally for support</div>
+      <div class="b-side" id="panel-birds">
         <div class="b-log" id="b-log"></div>
+      </div>
+      <div class="b-mid">
+        <div class="drag-hint" id="drag-hint">Arrastra pájaro → enemigo · Arrastra → aliado</div>
       </div>
       <div class="b-side" id="panel-enemies"></div>
     </div>
@@ -541,7 +542,8 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-ev
         <div class="rage-pct" id="rage-pct">0%</div>
       </div>
       <div class="act-btns">
-        <button id="btn-potion" class="btn btn-teal btn-act" disabled>🧪 Potion (0)</button>
+        <button id="btn-reserve" class="btn btn-ghost btn-act" style="display:none">🔄 Reserva</button>
+        <button id="btn-potion" class="btn btn-teal btn-act" disabled>🧪 Poción (0)</button>
         <button id="btn-end-turn" class="btn btn-red btn-act" disabled>⏭ Fin Turno</button>
       </div>
     </div>
@@ -6391,7 +6393,9 @@ function showPopup(x,y,text){
 
 /* ── PANELS ── */
 function buildPanels(){
-  const pb=document.getElementById('panel-birds');pb.innerHTML='';
+  const pb=document.getElementById('panel-birds');
+  // Keep the log, only remove plates
+  Array.from(pb.children).forEach(ch=>{ if(!ch.classList.contains('b-log'))ch.remove(); });
   BS.birds.forEach((b,i)=>{pb.appendChild(makePlate(b,'bp'+i,false,i));});
   const pe=document.getElementById('panel-enemies');pe.innerHTML='';
   BS.enemies.forEach((e,i)=>{const p=makePlate(e,'ep'+i,true,i);if(i===0)p.classList.add('targeted');pe.appendChild(p);});
@@ -6476,6 +6480,13 @@ function updPotBtn(){
   btn.textContent=inColi?'🚫 Sin items':`🧪 Poción (${tot})`;
   btn.disabled=tot===0||BS.phase!=='player'||inColi;
   if(inColi)btn.title='No se pueden usar objetos en el Coliseo';
+  // Reserve button: show when player's turn + dead slot exists + reserves available
+  const resBtn=document.getElementById('btn-reserve');
+  if(resBtn){
+    const hasReserves=(BS._reserves?.length||0)+(BS._coliMode?(COLI?.myTeam?.reserve?.length||0):0)>0;
+    const hasDeadSlot=BS.birds?.some(b=>!isAlive(b));
+    resBtn.style.display=(BS.phase==='player'&&hasReserves&&hasDeadSlot)?'':'none';
+  }
   const etBtn=document.getElementById('btn-end-turn');
   if(etBtn){
     const acted=BS.birdsActed?BS.birdsActed.size:0;
@@ -6789,6 +6800,14 @@ function fireSuper(birdIdx){const usedBirdIdx=birdIdx;
 
 
 /* ── POTION ── */
+document.getElementById('btn-reserve').addEventListener('click',()=>{
+  if(BS.phase!=='player')return;
+  if(tryReviveFromReserve()){
+    updPotBtn();
+    blog('🔄 Reserva activada manualmente','ll-sys');
+  }
+});
+
 document.getElementById('btn-end-turn').addEventListener('click',()=>{
   if(BS.phase!=='player')return;
   if(!BS.birdsActed||BS.birdsActed.size===0)return; // need at least 1 action
