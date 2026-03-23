@@ -3110,6 +3110,10 @@ const ALL_BIRDS={
   chuck:  {id:'chuck',  name:'Chuck',     type:'Speedster', maxHp:90, atk:22,def:4,  spName:'Lightning',   spDmg:20, spEff:'multi',      allyEff:'haste',   allyDesc:'Give ally ATK+10 (2 turns)', draw:(cx,x,y,r,bl,at)=>S.chuck(cx,x,y,r,bl,at)},
   bomb:   {id:'bomb',   name:'Bomb',      type:'Demolisher',maxHp:200,atk:20,def:10, spName:'Explosion',   spDmg:80, spEff:'aoe',        allyEff:'fortify', allyDesc:'Give ALL allies DEF+6', draw:(cx,x,y,r,bl,at)=>S.bomb(cx,x,y,r,bl,at)},
   matilda:{id:'matilda',name:'Matilda',   type:'Healer',    maxHp:130,atk:16,def:6,  spName:'White Magic', spDmg:0,  spEff:'heal',       allyEff:'heal',    allyDesc:'Heal target ally 50 HP', draw:(cx,x,y,r,bl,at)=>S.matilda(cx,x,y,r,bl,at)},
+  coopPlayer:{id:'coopPlayer',name:'Enmascarado',type:'Trickster',
+    maxHp:120,atk:20,def:6,spDmg:45,spCh:.35,
+    spName:'Máscara Furiosa',spEff:'aoe',allyEff:'heal',allyDesc:'Cura 40HP al compañero',
+    draw:(cx,x,y,r,bl)=>S.coopPlayer(cx,x,y,r,bl)},
   blues:  {id:'blues',  name:'The Blues', type:'Trio',      maxHp:80, atk:18,def:3,  spName:'Triple Hit',  spDmg:20, spEff:'multienemy', allyEff:'inspire', allyDesc:'Give ALL allies ATK+6', draw:(cx,x,y,r,bl,at)=>S.blues(cx,x,y,r,bl,at)},
 };
 // Convenience: draw bird with its equipped armor + weapon showing
@@ -3640,24 +3644,23 @@ loadCoopGS();
 
 // Build coop player instance from COOP_GS
 function buildCoopPlayerInst(){
-  const base={maxHp:120,atk:20,def:6,spDmg:45,spCh:.35,
-    spName:'Máscara Furiosa',spEff:'aoe',
+  // Attack type depends on equipped weapon
+  const wId=COOP_GS.equippedWeapon;
+  const wRec=wId?COOP_RECIPES[wId]:null;
+  // Weapon categories: melee=cw1,cw3,cw5  ranged=cw2,cw4
+  const weapType=wRec?{cw1:'melee',cw2:'ranged',cw3:'melee',cw4:'ranged',cw5:'melee'}[wId]||'melee':'melee';
+  // spEff and allyEff change based on weapon
+  const spEff=weapType==='ranged'?'multienemy':'aoe';
+  const spName=weapType==='ranged'?'Lluvia de Cuchillos':'Máscara Furiosa';
+  let atk=20,def=6,maxHp=120,spDmg=45;
+  if(wRec){const e=coopCraftedEff(wId);atk+=e.atk||0;spDmg+=e.spDmg||0;}
+  if(COOP_GS.equippedArmor){const e=coopCraftedEff(COOP_GS.equippedArmor);def+=e.def||0;maxHp+=e.maxHp||0;}
+  return{id:'coopPlayer',name:'Enmascarado',type:'Trickster',
+    maxHp,hp:maxHp,atk,curAtk:atk,def,curDef:def,
+    spDmg,curSpDmg:spDmg,spCh:.35,
+    spName,spEff,
     allyEff:'heal',allyDesc:'Cura 40HP al compañero',
-    name:'Enmascarado',type:'Trickster',id:'coopPlayer'};
-  // Apply equipped gear
-  let atk=base.atk,def=base.def,maxHp=base.maxHp,spDmg=base.spDmg;
-  if(COOP_GS.equippedWeapon){
-    const rec=COOP_RECIPES[COOP_GS.equippedWeapon];
-    if(rec){const e=coopCraftedEff(COOP_GS.equippedWeapon);
-      atk+=e.atk||0; spDmg+=e.spDmg||0;}
-  }
-  if(COOP_GS.equippedArmor){
-    const rec=COOP_RECIPES[COOP_GS.equippedArmor];
-    if(rec){const e=coopCraftedEff(COOP_GS.equippedArmor);
-      def+=e.def||0; maxHp+=e.maxHp||0;}
-  }
-  return{...base,maxHp,hp:maxHp,atk,curAtk:atk,def,curDef:def,
-    spDmg,curSpDmg:spDmg,buffs:[],
+    buffs:[],weapType,
     draw:(cx,x,y,r,bl)=>S.coopPlayer(cx,x,y,r,bl)};
 }
 function coopCraftedEff(recipeId){
@@ -4823,8 +4826,9 @@ function startCoopNodeBattle(node){
 
   // ── Set up battle state ──
   stopLoop();
-  // MY bird = BS.birds[0], PARTNER bird = BS.birds[1]
-  BS.birds=[myInst,partnerBird];
+  // Solo: 1 bird. With partner: 2 birds
+  const hasParter=!!(COOP.conn&&COOP.conn.open&&COOP.partnerStats);
+  BS.birds=hasParter?[myInst,partnerBird]:[myInst];
   BS._reserves=[];
   BS._coliMode=false;
   BS._coopMode=true;  // new flag for coop
@@ -4861,7 +4865,7 @@ function startCoopNodeBattle(node){
 
   updPotBtn();buildPanels();clearLog();
   blog('🤝 Combate cooperativo: '+node.label,'ll-sys');
-  blog('Tu pájaro: '+myInst.name+' | Compañero: '+partnerBird.name,'ll-sys');
+  blog(hasParter?'Tu pájaro: '+myInst.name+' | Compañero: '+partnerBird.name:'Modo solitario: '+myInst.name,'ll-sys');
   setTurnUI('player');
 
   // ── Incoming coop messages ──
@@ -6935,6 +6939,11 @@ function animTypeFor(birdId,spEff){
     if(spEff==='heal'||spEff==='buff')return birdId==='red'?'melee':'magic';
     if(spEff==='multienemy')return'ranged';
   }
+  if(birdId==='coopPlayer'){
+    // coopPlayer attack type from their weapon
+    const inst=BS.birds.find(b=>b.id==='coopPlayer');
+    return inst?.weapType||'melee';
+  }
   const melee=['red','bomb'];
   return melee.includes(birdId)?'melee':'ranged';
 }
@@ -7224,6 +7233,10 @@ function dStart(e){
   const {x,y}=getXY(e);
   const bi=birdAtPos(x,y);
   if(bi<0)return;
+  // In coop mode: player can only drag their own bird (index 0)
+  if(BS._coopMode&&bi!==0){
+    blog('¡Ese es el pájaro de tu compañero!','ll-sys');return;
+  }
   // Block birds that already acted this turn
   if(BS.birdsActed&&BS.birdsActed.has(bi)){
     blog(`${BS.birds[bi]?.name} ya actuó este turno`,'ll-sys');return;
@@ -7309,18 +7322,22 @@ function makePlate(char,domId,isEnemy,idx){
     plate.style.cursor='pointer';
     plate.onclick=()=>{
       if(BS.phase!=='player')return;
+      if(BS._coopMode&&idx!==0){blog('¡Ese es el pájaro de tu compañero!','ll-sys');return;}
       if(BS.birdsActed&&BS.birdsActed.has(idx)){blog('Este pájaro ya actuó este turno','ll-sys');return;}
       BS.activeIdx=idx;setTurnUI('player');
     };
   }
   const pct=Math.max(0,(char.hp/char.maxHp)*100);
   const sc=document.createElement('canvas');sc.width=42;sc.height=42;sc.className='np-spr';
-  if(!isEnemy)drawBird(sc.getContext('2d'),char.id,21,23,16,false);
+  if(!isEnemy){
+    if(char.id==='coopPlayer') S.coopPlayer(sc.getContext('2d'),21,23,16,false);
+    else drawBird(sc.getContext('2d'),char.id,21,23,16,false);
+  }
   else char.draw(sc.getContext('2d'),21,23,16,false);
   const e=!isEnemy?getBirdEff(char.id):{atk:0,def:0};
   const eq=!isEnemy&&(e.atk||e.def)?`+${e.atk||0}A +${e.def||0}D`:'';
-  const wId=!isEnemy?GS.equippedWeapons[char.id]:null;
-  const aId=!isEnemy?GS.equippedArmors[char.id]:null;
+  const wId=!isEnemy?(char.id==='coopPlayer'?COOP_GS.equippedWeapon:GS.equippedWeapons[char.id]):null;
+  const aId=!isEnemy?(char.id==='coopPlayer'?COOP_GS.equippedArmor:GS.equippedArmors[char.id]):null;
   const wItem=wId?DROP_ITEMS[wId]:null;
   const aItem=aId?DROP_ITEMS[aId]:null;
   plate.innerHTML=`<div class="np-hd"></div>
