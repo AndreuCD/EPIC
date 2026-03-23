@@ -600,14 +600,14 @@ CanvasRenderingContext2D.prototype.ellipse=function(x,y,rx,ry,...args){
 };
 /* ── RAGE constants (must be declared before use) ── */
 let RAGE=0;
-const RAGE_MAX=100,RAGE_PER_DEALT=0.8,RAGE_PER_RECV=1.2;
+const RAGE_MAX=100,RAGE_PER_DEALT=0.18,RAGE_PER_RECV=0.25;
 // Diminishing returns: big single hits charge rage less efficiently
 // rageFromDmg(50) ≈ 11,  rageFromDmg(100) ≈ 16,  rageFromDmg(10) ≈ 6
 function rageFromDmg(dmg, mult){
   // sqrt scaling: large damage gives less rage per point than small damage
   // Tuned so you need 3-5 hits to fill rage, not 1
   const m=mult||1;
-  return Math.sqrt(dmg*8)*m;
+  return Math.sqrt(dmg*2)*m; // much slower — need ~10-15 hits
 }
 
 'use strict';
@@ -4111,11 +4111,11 @@ function startColiseumBattle(){
       refreshPlate(myBird,'bp'+m.myIdx);
       screenFlash('rgba(255,40,0,.5)',150); screenShake(m.dmg>40?7:3,200);
       const p=BIRD_POS[m.myIdx]; if(p)spawnParts(p.x,p.y,'#ff8844',8,'exp');
-      if(BS.birds.every(b=>!isAlive(b))){setTimeout(()=>coliEnd(false),600);}
+      if(BS.birds.every(b=>!isAlive(b))){if(!tryReviveFromReserve())setTimeout(()=>coliEnd(false),600);}
     }
     if(m.type==='endturn'){
       // Rival finished their turn — now it's mine
-      if(BS.birds.every(b=>!isAlive(b))){setTimeout(()=>coliEnd(false),300);return;}
+      if(BS.birds.every(b=>!isAlive(b))){if(!tryReviveFromReserve()){setTimeout(()=>coliEnd(false),300);return;}}
       if(BS.enemies.every(e=>!isAlive(e))){setTimeout(()=>coliEnd(true),300);return;}
       setTimeout(()=>{
         BS.birdsActed=new Set();
@@ -4247,30 +4247,34 @@ function coliEnd(iWon){
   },600);
 }
 
-function coliTryReviveFromReserve(){
-  // In coli mode, if a bird just died, bring in next reserve
-  if(!BS._coliMode)return false;
-  const reserves=(COLI.myTeam?.reserve)||[];
-  if(!reserves.length)return false;
-  // Find first dead bird slot
-  const deadIdx=BS.birds.findIndex(b=>!isAlive(b));
-  if(deadIdx<0)return false;
-  const nextId=reserves.find(id=>!BS.birds.some(b=>b.id===id));
-  if(!nextId)return false;
-  // Remove from reserve, add to active slot
-  COLI.myTeam.reserve=reserves.filter(id=>id!==nextId);
-  const inst=buildBirdInst(nextId);
-  BS.birds[deadIdx]=inst;
-  BS.birds[deadIdx].hp=inst.maxHp; // full HP
+function tryReviveFromReserve(){
+  // Works for both PvE (BS._reserves) and coli (COLI.myTeam.reserve)
+  const reserveList = BS._coliMode
+    ? (COLI.myTeam?.reserve||[])
+    : (BS._reserves||[]);
+  if(!reserveList.length) return false;
+  const deadIdx = BS.birds.findIndex(b=>!isAlive(b));
+  if(deadIdx<0) return false;
+  const nextId = reserveList.find(id=>!BS.birds.some(b=>b.id===id));
+  if(!nextId) return false;
+  // Remove from reserve list
+  if(BS._coliMode) COLI.myTeam.reserve = COLI.myTeam.reserve.filter(id=>id!==nextId);
+  else BS._reserves = BS._reserves.filter(id=>id!==nextId);
+  const inst = buildBirdInst(nextId);
+  BS.birds[deadIdx] = inst;
   buildPanels();
-  blog('🔄 '+inst.name+' entra como reserva!','ll-sys');
-  spawnConfetti(12);
-  // Tell rival a reserve came in
-  coliSend({type:'reserve_in',slot:deadIdx,birdId:nextId,stats:{
-    maxHp:inst.maxHp,curAtk:inst.curAtk,curDef:inst.curDef,curSpDmg:inst.curSpDmg
-  }});
+  blog('🔄 ¡'+inst.name+' entra como reserva!','ll-sys');
+  screenFlash('rgba(100,255,100,.3)',300);
+  const bp=BIRD_POS[deadIdx];if(bp)spawnHeal(bp.x,bp.y,20);
+  if(BS._coliMode){
+    coliSend({type:'reserve_in',slot:deadIdx,birdId:nextId,stats:{
+      maxHp:inst.maxHp,curAtk:inst.curAtk,curDef:inst.curDef,curSpDmg:inst.curSpDmg
+    }});
+  }
   return true;
 }
+// Keep old name as alias
+function coliTryReviveFromReserve(){ return tryReviveFromReserve(); }
 
 /* ═══ TITLE ═══ */
 {
@@ -5649,7 +5653,7 @@ function showNestScreen(){
 /* ═══ TEAM SELECT ═══ */
 function showTeamScreen(node){
   const cv=document.getElementById('team-cv');rsCV(cv);const cx=cv.getContext('2d');
-  document.getElementById('team-sub').textContent='Choose birds for: '+node.label+' (max 3)';
+  document.getElementById('team-sub').textContent='Elige hasta 5 pájaros (3 activos + reservas): '+node.label;
   let sel=[];
   const row=document.getElementById('team-row');row.innerHTML='';
   GS.unlockedBirds.forEach((birdId,i)=>{
@@ -5670,12 +5674,15 @@ function showTeamScreen(node){
       <div style="font-size:.56rem;color:#88ffcc;margin-top:3px">🤝 ${bird.allyDesc}</div>`;
     card.onclick=()=>{
       if(card.classList.contains('tc-sel')){card.classList.remove('tc-sel');sel=sel.filter(x=>x!==birdId);}
-      else if(sel.length<3){card.classList.add('tc-sel');sel.push(birdId);}
+      else if(sel.length<5){card.classList.add('tc-sel');sel.push(birdId);}
+      const active=sel.slice(0,3),res=sel.slice(3);
       document.getElementById('btn-fight').disabled=sel.length===0;
+      document.getElementById('team-sub').textContent=
+        'Activos: '+active.length+'/3'+(res.length?' · Reservas: '+res.length:'')+'  (elige hasta 5)';
     };
     row.appendChild(card);if(i===0)card.click();
   });
-  document.getElementById('btn-fight').onclick=()=>{stopLoop();startBattle(node,sel);};
+  document.getElementById('btn-fight').onclick=()=>{stopLoop();startBattle(node,sel.slice(0,3),sel.slice(3));};
   document.getElementById('btn-team-back').onclick=()=>{stopLoop();showMapScreen();};
   startLoop(()=>{drawSky(cx,cv.width,cv.height,bgT,node.zoneTheme||0);});
   showScreen('team-screen');
@@ -5998,7 +6005,7 @@ function animTypeFor(birdId,spEff){
   return melee.includes(birdId)?'melee':'ranged';
 }
 
-function startBattle(node,teamIds){
+function startBattle(node,teamIds,reserveIds){
   if(!node?.isColiseumBattle)COLI.noBattleItems=false; // reset for normal battles
   BS.birds=teamIds.map(id=>buildBirdInst(id));
   // Wave system: if node has waves[], use those instead of enemies[]
@@ -6854,7 +6861,7 @@ function doEnemyTurn(){
           if(t<1){requestAnimationFrame(gStep);}
           else{
             if((ANIM.active?ANIM.active.type:null)==='enemy')ANIM.active=null;
-            if(BS.birds.every(b=>!isAlive(b))){if(!coliTryReviveFromReserve())setTimeout(()=>showResult(false),400);return;}
+            if(BS.birds.every(b=>!isAlive(b))){if(!tryReviveFromReserve())setTimeout(()=>showResult(false),400);return;}
             if(seq===alive.length-1){
               setTimeout(()=>{
                 BS.birds.forEach(b=>{if(isAlive(b))tickBuffs(b);});
@@ -6906,7 +6913,7 @@ function doEnemyTurn(){
         else{
           if((ANIM.active?ANIM.active.type:null)==='enemy')ANIM.active=null;
           ANIM.projectiles=ANIM.projectiles.filter(p=>p.type!=='arrow'||p.t>.8);
-          if(BS.birds.every(b=>!isAlive(b))){if(!coliTryReviveFromReserve())setTimeout(()=>showResult(false),400);return;}
+          if(BS.birds.every(b=>!isAlive(b))){if(!tryReviveFromReserve())setTimeout(()=>showResult(false),400);return;}
           if(seq===alive.length-1){
             setTimeout(()=>{
               BS.birds.forEach(b=>{if(isAlive(b))tickBuffs(b);});
