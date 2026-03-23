@@ -491,6 +491,7 @@ canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-ev
     <div style="font-family:'Lilita One',cursive;font-size:1.4rem;color:#40d0ff">Cooperativo</div>
     <div style="font-size:.72rem;color:rgba(255,255,255,.35);margin-top:2px">2 jugadores · contra las hordas</div>
     <input id="coop-name" class="cheat-input" style="margin-top:8px;width:160px;text-align:center;font-size:.9rem;border-color:#40a0c8" maxlength="16" placeholder="Tu nombre…"/>
+    <div style="font-size:.7rem;color:rgba(255,255,255,.4);margin-top:8px" id="coop-gear-info">Cargando…</div>
   </div>
 
   <div id="coop-status" style="text-align:center;font-size:.76rem;color:#aaa;margin-bottom:10px;min-height:1.1em">Sin conectar</div>
@@ -1973,6 +1974,46 @@ const S={
   // ── GIANT PIG: huge round body ~1.6×, variant determines color/accessories
   // variant: 'brute' | 'shaman' | 'tank' | 'sorcerer'
   // chargeT/chargeMax drawn as a glowing ring meter around body
+  coopPlayer(cx,x,y,r,bl){
+    cx.save();cx.translate(x,y);
+    // Pig body
+    const g=cx.createRadialGradient(-r*.15,-r*.2,r*.02,0,0,r);
+    g.addColorStop(0,'#88e888');g.addColorStop(.55,'#54b454');g.addColorStop(1,'#1e5e1e');
+    cx.beginPath();cx.arc(0,0,r,0,Math.PI*2);cx.fillStyle=g;cx.fill();
+    cx.strokeStyle='rgba(0,60,0,.3)';cx.lineWidth=r*.04;cx.stroke();
+    // Pig ears
+    [[-r*.65,-r*.6,.3],[r*.65,-r*.6,-.3]].forEach(([ex,ey,ea])=>{
+      cx.save();cx.translate(ex,ey);cx.rotate(ea);
+      cx.fillStyle='#3a8840';cx.beginPath();cx.ellipse(0,0,r*.22,r*.28,0,0,Math.PI*2);cx.fill();
+      cx.fillStyle='#ff9999';cx.beginPath();cx.ellipse(0,r*.04,r*.1,r*.14,0,0,Math.PI*2);cx.fill();
+      cx.restore();
+    });
+    // Pig snout
+    cx.fillStyle='#55aa55';cx.beginPath();cx.ellipse(0,r*.26,r*.32,r*.22,0,0,Math.PI*2);cx.fill();
+    cx.fillStyle='#1a5510';
+    cx.beginPath();cx.ellipse(-r*.12,r*.27,r*.08,r*.1,.1,0,Math.PI*2);cx.fill();
+    cx.beginPath();cx.ellipse(r*.12,r*.27,r*.08,r*.1,-.1,0,Math.PI*2);cx.fill();
+    // Red bird mask
+    cx.fillStyle='#cc2200';
+    cx.beginPath();cx.ellipse(0,-r*.08,r*.7,r*.52,0,0,Math.PI*2);cx.fill();
+    cx.strokeStyle='#881100';cx.lineWidth=r*.04;cx.stroke();
+    // Mask beak
+    cx.fillStyle='#ffaa00';cx.beginPath();
+    cx.moveTo(r*.68,-r*.08);cx.lineTo(r*.56,r*.1);cx.lineTo(r*.44,-r*.08);cx.closePath();cx.fill();
+    // Mask eyes
+    [[-r*.26,-r*.17],[r*.26,-r*.17]].forEach(([ex,ey])=>{
+      cx.fillStyle='#fff';cx.beginPath();cx.ellipse(ex,ey,r*.17,r*.15,0,0,Math.PI*2);cx.fill();
+      cx.fillStyle='#111';cx.beginPath();cx.arc(ex+r*.04,ey+r*.02,r*.07,0,Math.PI*2);cx.fill();
+      cx.strokeStyle='#880000';cx.lineWidth=r*.07;cx.lineCap='round';
+      cx.beginPath();cx.moveTo(ex-r*.17,ey-r*.17);cx.lineTo(ex+r*.05,ey-r*.07);cx.stroke();
+    });
+    // Bird crest
+    cx.fillStyle='#dd2200';
+    for(let i=0;i<3;i++){cx.beginPath();cx.ellipse(-r*.1+i*r*.13,-r*.62-i*.06*r,r*.07,r*.2+i*.04*r,i*.12-.08,0,Math.PI*2);cx.fill();}
+    // Gleam
+    cx.fillStyle='rgba(255,255,255,.08)';cx.beginPath();cx.ellipse(-r*.16,-r*.26,r*.28,r*.16,-.3,0,Math.PI*2);cx.fill();
+    cx.restore();
+  },
   pigGiant(cx,x,y,r,bl,variant,chargeT,chargeMax){
     cx.save();cx.translate(x,y);
     const R=r*1.55; // bigger than regular pig
@@ -3406,6 +3447,21 @@ const ZONE_DROPS=[
   ['dragonscale','dragonscale','crystal','dragonscale','crystal',{bp:'redEgg'},{bp:'chuckOmega'},{bp:'bombUltra'},{bp:'matDivine'},{bp:'bluesTemp'},{bp:'redArm4'},{bp:'chuckArm4'},{bp:'bombArm4'},{bp:'matArm4'},{bp:'bluesArm4'},{bp:'redArmS2'},{bp:'chuckArmS2'},{bp:'bombArmS2'},{bp:'matArmS2'},{bp:'bluesArmS2'}],
 ];
 
+/* ═══ COOP RECIPES ═══ */
+const COOP_RECIPES = {
+  // Weapons (T1–T4)
+  cw1: {id:'cw1',name:'Porra Rota',      icon:'🪵',type:'weapon',craftTier:1,recipe:{wood:2},         baseEff:{atk:6,spDmg:10}},
+  cw2: {id:'cw2',name:'Cuchillo Mellado',icon:'🔪',type:'weapon',craftTier:1,recipe:{leather:2,wood:1},baseEff:{atk:9,spDmg:14}},
+  cw3: {id:'cw3',name:'Hacha de Hierro', icon:'🪓',type:'weapon',craftTier:2,recipe:{iron:3,wood:1},   baseEff:{atk:16,spDmg:22}},
+  cw4: {id:'cw4',name:'Espada de Cristal',icon:'💎',type:'weapon',craftTier:3,recipe:{crystal:2,iron:2},baseEff:{atk:24,spDmg:34}},
+  cw5: {id:'cw5',name:'Hoja del Dragón', icon:'🐉',type:'weapon',craftTier:4,recipe:{dragonscale:2,crystal:2},baseEff:{atk:36,spDmg:52}},
+  // Armors (T1–T4)
+  ca1: {id:'ca1',name:'Capucha de Cuero', icon:'🪖',type:'armor',craftTier:1,recipe:{leather:3},        baseEff:{def:5,maxHp:15}},
+  ca2: {id:'ca2',name:'Pechera de Hierro',icon:'🛡️',type:'armor',craftTier:2,recipe:{iron:3,leather:1},  baseEff:{def:12,maxHp:25}},
+  ca3: {id:'ca3',name:'Coraza Dorada',    icon:'🥇',type:'armor',craftTier:3,recipe:{crystal:1,iron:3},  baseEff:{def:20,maxHp:40}},
+  ca4: {id:'ca4',name:'Armadura Dragón',  icon:'🐉',type:'armor',craftTier:4,recipe:{dragonscale:2,crystal:1},baseEff:{def:30,maxHp:65}},
+};
+
 /* ─── 5 ZONES × 6 nodes ─── */
 const ZONES=[
   {id:'z0',name:'🌾 Cobalt Plateaus',theme:0,nodes:[
@@ -3529,6 +3585,63 @@ let GS={
   itemsUpgraded:0,
 };
 function totalPotions(){return Object.values(GS.potionStock).reduce((a,b)=>a+b,0)}
+
+/* ═══ COOP SAVE STATE ═══ */
+let COOP_GS = {
+  level: 1,
+  xp: 0,
+  equippedWeapon: null,  // recipe id
+  equippedArmor: null,   // recipe id
+  craftedItems: {},
+  weaponUpgrades: {},
+  materials: {},
+  completedNodes: new Set(),
+};
+const COOP_SAVE_KEY = 'abe_coop_v1';
+function saveCoopGS(){
+  const d={...COOP_GS, completedNodes:[...COOP_GS.completedNodes]};
+  localStorage.setItem(COOP_SAVE_KEY, JSON.stringify(d));
+}
+function loadCoopGS(){
+  try{
+    const d=JSON.parse(localStorage.getItem(COOP_SAVE_KEY)||'{}');
+    if(d.completedNodes)d.completedNodes=new Set(d.completedNodes);
+    Object.assign(COOP_GS,d);
+  }catch{}
+}
+loadCoopGS();
+
+// Build coop player instance from COOP_GS
+function buildCoopPlayerInst(){
+  const base={maxHp:120,atk:20,def:6,spDmg:45,spCh:.35,
+    spName:'Máscara Furiosa',spEff:'aoe',
+    allyEff:'heal',allyDesc:'Cura 40HP al compañero',
+    name:'Enmascarado',type:'Trickster',id:'coopPlayer'};
+  // Apply equipped gear
+  let atk=base.atk,def=base.def,maxHp=base.maxHp,spDmg=base.spDmg;
+  if(COOP_GS.equippedWeapon){
+    const rec=COOP_RECIPES[COOP_GS.equippedWeapon];
+    if(rec){const e=coopCraftedEff(COOP_GS.equippedWeapon);
+      atk+=e.atk||0; spDmg+=e.spDmg||0;}
+  }
+  if(COOP_GS.equippedArmor){
+    const rec=COOP_RECIPES[COOP_GS.equippedArmor];
+    if(rec){const e=coopCraftedEff(COOP_GS.equippedArmor);
+      def+=e.def||0; maxHp+=e.maxHp||0;}
+  }
+  return{...base,maxHp,hp:maxHp,atk,curAtk:atk,def,curDef:def,
+    spDmg,curSpDmg:spDmg,buffs:[],
+    draw:(cx,x,y,r,bl)=>S.coopPlayer(cx,x,y,r,bl)};
+}
+function coopCraftedEff(recipeId){
+  const ci=COOP_GS.craftedItems[recipeId];if(!ci)return{};
+  const stars=COOP_GS.weaponUpgrades[recipeId]||0;
+  if(stars===0)return ci.eff;
+  const mult=1+stars*.2;
+  const b={};Object.entries(ci.eff).forEach(([k,v])=>{b[k]=Math.round(v*mult);});
+  return b;
+}
+
 
 /* ── SAVE / LOAD ── localStorage key: "abe_save_v2" ── */
 const SAVE_KEY='abe_save_v2';
@@ -4361,8 +4474,11 @@ function coliTryReviveFromReserve(){ return tryReviveFromReserve(); }
 const COOP={
   peer:null,conn:null,isHost:false,
   myName:'',partnerName:'',
-  meReady:false,partnerReady:false,
-  selectedZone:null,
+  myBirdId:null,      // single bird I play as
+  partnerBirdId:null, // partner's bird
+  partnerStats:null,partnerWeapon:null,partnerArmor:null,
+  completed:new Set(),
+  _pendingNode:null,_onBattleMsg:null,
 };
 
 function coopSend(obj){if(COOP.conn&&COOP.conn.open)COOP.conn.send(JSON.stringify(obj));}
@@ -4376,26 +4492,41 @@ function coopSetupConn(conn){
     document.getElementById('coop-connect-ui').style.display='none';
     document.getElementById('coop-ready-ui').style.display='block';
     coopStatus('🤝 Conectado — enviando datos…','#40d0ff');
-    coopSend({type:'hello',name:COOP.myName||'Jugador'});
-    coopRenderZones();
+    // Send coop player stats
+    const myCoopInst=buildCoopPlayerInst();
+    coopSend({type:'hello',
+      name:COOP.myName||'Jugador',
+      birdId:'coopPlayer',
+      stats:{maxHp:myCoopInst.maxHp,curAtk:myCoopInst.curAtk,curDef:myCoopInst.curDef,curSpDmg:myCoopInst.curSpDmg,spCh:.35},
+      weapon:COOP_GS.equippedWeapon,
+      armor:COOP_GS.equippedArmor,
+    });
   });
   conn.on('data',raw=>{
     let m;try{m=JSON.parse(raw);}catch{return;}
     if(m.type==='hello'){
       COOP.partnerName=m.name||'Compañero';
+      COOP.partnerBirdId=m.birdId;
+      COOP.partnerStats=m.stats;
+      COOP.partnerWeapon=m.weapon;
+      COOP.partnerArmor=m.armor;
+      const bd=ALL_BIRDS[m.birdId];
       const el=document.getElementById('coop-partner-info');
-      if(el)el.textContent='🤝 '+COOP.partnerName+' conectado';
-      coopStatus('✅ '+COOP.partnerName+' conectado — listos para jugar','#40d0ff');
+      if(el)el.textContent='🤝 '+COOP.partnerName+(bd?' — '+bd.name:'');
+      coopStatus('✅ '+COOP.partnerName+' conectado — listos','#40d0ff');
       document.getElementById('coop-fight-btn').disabled=false;
     }
-    if(m.type==='ready'){COOP.partnerReady=true;if(COOP.meReady)startCoopBattle();}
+    if(m.type==='ready'){startCoopBattle();}
     if(m.type==='node_request'){
       // Partner wants to start a node — show confirmation
       coopShowNodeRequest(m.node);
     }
     if(m.type==='node_accept'){
-      // Partner accepted — start battle
       if(COOP._pendingNode)startCoopNodeBattle(COOP._pendingNode);
+    }
+    // Coop battle sync messages
+    if(m.type==='coop_action'||m.type==='coop_endturn'||m.type==='coop_over'){
+      if(COOP._onBattleMsg) COOP._onBattleMsg(m);
     }
   });
   conn.on('close',()=>{
@@ -4419,6 +4550,25 @@ function showCoopOverlay(){
   document.getElementById('coop-join-ui').style.display='none';
   const ni=document.getElementById('coop-name');
   ni.value=COOP.myName||'';ni.oninput=()=>{COOP.myName=ni.value.trim()||'Jugador';};
+  // Gear info
+  const gearEl=document.getElementById('coop-gear-info');
+  if(gearEl){
+    const wi=COOP_GS.equippedWeapon?COOP_RECIPES[COOP_GS.equippedWeapon]:null;
+    const ai=COOP_GS.equippedArmor?COOP_RECIPES[COOP_GS.equippedArmor]:null;
+    gearEl.textContent=(wi?wi.icon+' '+wi.name:'Sin arma')+' · '+(ai?ai.icon+' '+ai.name:'Sin armadura');
+  }
+  // OLD bird picker removed — keep for compat:
+  if(false){const id='';const GS_unlockedBirds=[];GS_unlockedBirds.forEach(id=>{
+    const bd=ALL_BIRDS[id];if(!bd)return;
+    const btn=document.createElement('div');
+    btn.style.cssText='cursor:pointer;padding:4px 6px;border-radius:8px;border:2px solid '+(id===COOP.myBirdId?'#40d0ff':'rgba(255,255,255,.2)')+';background:'+(id===COOP.myBirdId?'rgba(0,40,80,.8)':'rgba(0,0,0,.4)');
+    const cv2=document.createElement('canvas');cv2.width=40;cv2.height=40;
+    cv2.style.cssText='position:static!important;display:block;width:40px!important;height:40px!important;margin:0 auto';
+    bd.draw(cv2.getContext('2d'),20,24,14,false,0);btn.appendChild(cv2);
+    const nm=document.createElement('div');nm.style.cssText='font-size:.58rem;font-family:Lilita One,cursive;color:#ffe44d;text-align:center;margin-top:1px';nm.textContent=bd.name;btn.appendChild(nm);
+    btn.onclick=()=>{COOP.myBirdId=id;};
+    bpEl.appendChild(btn);
+  }); } // end fake block
 
   document.getElementById('coop-host-btn').onclick=()=>{
     document.getElementById('coop-host-ui').style.display='block';
@@ -4456,11 +4606,8 @@ function showCoopOverlay(){
   };
   document.getElementById('coop-fight-btn').onclick=(ev)=>{
     ev.stopPropagation();
-    COOP.meReady=true;
     coopSend({type:'ready'});
-    coopStatus('✅ Listo — esperando compañero…','#ffe44d');
-    document.getElementById('coop-fight-btn').disabled=true;
-    if(COOP.partnerReady)startCoopBattle();
+    startCoopBattle(); // go to map immediately — don't wait for partner
   };
   document.getElementById('coop-close').onclick=(ev)=>{ev.stopPropagation();ov.style.display='none';};
   ov.onclick=(e)=>{if(e.target===ov)ov.style.display='none';};
@@ -4484,8 +4631,215 @@ function coopShowNodeRequest(node){
 
 function startCoopNodeBattle(node){
   COOP._pendingNode=null;
-  // For now show placeholder; full battle engine connects here
-  alert('⚔ Iniciando: '+node.label+'\n(Motor de batalla coop próximamente)');
+  document.getElementById('coop-ov').style.display='none';
+
+  // ── Build MY coop player bird ──
+  const myInst=buildCoopPlayerInst();
+
+  // ── Build partner bird from their sent stats ──
+  const pId=COOP.partnerBirdId;
+  const pBd=ALL_BIRDS[pId];
+  let partnerBird;
+  if(pBd&&COOP.partnerStats){
+    const s=COOP.partnerStats;
+    const maxHp=s.maxHp||pBd.maxHp;
+    partnerBird={...pBd,
+      key:'coop_partner',birdId:pId,isCoopPartner:true,
+      partnerWeapon:COOP.partnerWeapon||null,
+      partnerArmor:COOP.partnerArmor||null,
+      maxHp,hp:maxHp,
+      curAtk:s.curAtk||pBd.atk,curDef:s.curDef||pBd.def,
+      curSpDmg:s.curSpDmg||pBd.spDmg||0,
+      spCh:s.spCh||pBd.spCh||.3,
+      buffs:[],
+      draw:(cx,x,y,r,bl)=>pBd.draw(cx,x,y,r,bl,0),
+    };
+  } else {
+    // Partner not connected — solo mode with placeholder
+    partnerBird=buildBirdInst(myId);
+    partnerBird.key='coop_solo';
+  }
+
+  // ── Set up battle state ──
+  stopLoop();
+  // MY bird = BS.birds[0], PARTNER bird = BS.birds[1]
+  BS.birds=[myInst,partnerBird];
+  BS._reserves=[];
+  BS._coliMode=false;
+  BS._coopMode=true;  // new flag for coop
+  BS._coopNode=node;
+  BS._coopMyIdx=0;    // I always control bird 0
+  BS._coopPartnerIdx=1; // partner controls bird 1
+
+  // Build enemies from node
+  const scale=1+((node.zi||0)*0.08);
+  BS.enemies=(node.enemies||['pig','pig']).map(k=>buildEnemyInst(k,scale));
+  BS._node={...node,isCoopBattle:true,label:node.label||'Coop',zoneName:node.zoneName||'Coop',zoneTheme:node.theme||0};
+  BS._waves=null;BS._waveIdx=0;BS._advancing=false;BS._scale=scale;
+  BS.birdsActed=new Set();BS.activeIdx=0;BS.targetIdx=0;
+  BS.drag={on:false,bi:-1,x0:0,y0:0,cx:0,cy:0};
+  BS.phase='player';
+  BIRD_POS=[];ENEMY_POS=[];
+  resetRage();
+
+  // ── UI ──
+  document.getElementById('b-title').textContent='🤝 '+node.label;
+  document.getElementById('b-wave').textContent=(COOP.myName||'Tú')+' & '+(COOP.partnerName||'Compañero');
+  BS._turn=0;
+
+  // Drag listeners
+  if(window._dStartBound){document.removeEventListener('mousedown',window._dStartBound);document.removeEventListener('touchstart',window._dStartBound,{passive:false});}
+  if(window._dMoveBound){document.removeEventListener('mousemove',window._dMoveBound);document.removeEventListener('touchmove',window._dMoveBound,{passive:false});}
+  if(window._dEndBound){document.removeEventListener('mouseup',window._dEndBound);document.removeEventListener('touchend',window._dEndBound);}
+  window._dStartBound=dStart;window._dMoveBound=dMove;window._dEndBound=dEnd;
+  document.addEventListener('mousedown',dStart);document.addEventListener('touchstart',dStart,{passive:false});
+  document.addEventListener('mousemove',dMove);document.addEventListener('touchmove',dMove,{passive:false});
+  document.addEventListener('mouseup',dEnd);document.addEventListener('touchend',dEnd);
+  document.getElementById('drag-cv').style.pointerEvents='none';
+
+  updPotBtn();buildPanels();clearLog();
+  blog('🤝 Combate cooperativo: '+node.label,'ll-sys');
+  blog('Tu pájaro: '+myInst.name+' | Compañero: '+partnerBird.name,'ll-sys');
+  setTurnUI('player');
+
+  // ── Incoming coop messages ──
+  COOP._onBattleMsg=(m)=>{
+    if(m.type==='coop_action'){
+      // Partner attacked enemy m.enemyIdx for m.dmg
+      const enemy=BS.enemies[m.enemyIdx];
+      if(!enemy)return;
+      enemy.hp=Math.max(0,enemy.hp-m.dmg);
+      blog('🤝 '+m.name+': '+m.dmg+'dmg → '+(enemy.name||'enemigo'),'ll-ally');
+      showDmgNum('ep'+m.enemyIdx,m.dmg,'dn-a');
+      refreshPlate(enemy,'ep'+m.enemyIdx);
+      const ep=ENEMY_POS[m.enemyIdx];if(ep)spawnParts(ep.x,ep.y,'#aaeeff',6,'exp');
+      // Mark partner bird as acted
+      BS.birdsActed.add(1);
+      // Check win
+      if(BS.enemies.every(e=>!isAlive(e))){setTimeout(()=>coopBattleEnd(true),600);return;}
+      // If both acted, start enemy turn
+      const myActed=BS.birdsActed.has(0);
+      if(myActed)startEnemyTurn();
+    }
+    if(m.type==='coop_ally'){
+      // Partner used ally action — apply to partner's bird (BS.birds[1])
+      const bird=BS.birds[1];if(!bird)return;
+      if(m.eff==='heal'){bird.hp=Math.min(bird.maxHp,bird.hp+m.amount);refreshPlate(bird,'bp1');}
+      BS.birdsActed.add(1);
+      blog('🤝 '+m.name+' usa apoyo','ll-ally');
+      const myActed=BS.birdsActed.has(0);
+      if(myActed)startEnemyTurn();
+    }
+    if(m.type==='coop_hp_sync'){
+      // Partner's bird took damage — update BS.birds[1] hp
+      const bird=BS.birds[1];if(!bird)return;
+      bird.hp=Math.max(0,m.hp);
+      refreshPlate(bird,'bp1');
+    }
+    if(m.type==='coop_over'){
+      coopBattleEnd(m.won);
+    }
+  };
+
+  showScreen('battle-screen');
+  const bcv=document.getElementById('battle-cv');rsCV(bcv);const bcx=bcv.getContext('2d');
+  rsCV(document.getElementById('drag-cv'));
+  startLoop(()=>{
+    drawBattleBG(bcx,bcv.width,bcv.height,bgT,node.theme||0);
+    const W=bcv.width,H=bcv.height;
+    // Two birds side by side on left
+    const bSlots=[[.35,.5],[.72,.5]];
+    BS.birds.forEach((b,i)=>{
+      const s=bSlots[i]||[.5,.5];
+      const bx0=W*(.02+.40*s[0]),by0=H*(.52+s[1]*.12)+(isAlive(b)?Math.sin(bgT*1.4+i)*4:0);
+      BIRD_POS[i]={x:bx0,y:by0};
+      if(!isAlive(b))return;
+      const off=ANIM.getBirdOffset(i),shk=ANIM.getBirdHitShake(i);
+      const bx=bx0+off.dx+shk.dx,by=by0+off.dy+shk.dy;
+      const br=Math.max(1,34*Math.abs(off.sc)*Math.abs(shk.sc));
+      bcx.save();bcx.globalAlpha=.12;bcx.fillStyle='#000';bcx.beginPath();bcx.ellipse(bx0,by0+H*.1,26,7,0,0,Math.PI*2);bcx.fill();bcx.restore();
+      bcx.save();bcx.translate(bx,by);bcx.rotate(off.rot);
+      if(i===0){
+        // MY coop player
+        S.coopPlayer(bcx,0,0,br,!blink);
+        if(COOP_GS.equippedArmor)drawArmorByRecipe(bcx,br,COOP_GS.equippedArmor,'coopPlayer');
+        if(COOP_GS.equippedWeapon)drawWeaponOnBird(bcx,'coopPlayer',br,COOP_GS.equippedWeapon);
+      } else {
+        // PARTNER coop player — their gear
+        S.coopPlayer(bcx,0,0,br,!blink);
+        if(b.partnerArmor)drawArmorByRecipe(bcx,br,b.partnerArmor,'coopPlayer');
+        if(b.partnerWeapon)drawWeaponOnBird(bcx,'coopPlayer',br,b.partnerWeapon);
+      }
+      bcx.restore();
+      if(i===0)ANIM.drawWeaponSwing(bcx,i,bx,by,br,b.id,GS.equippedWeapons[b.id]);
+      // Active ring (only my bird)
+      if(i===0&&i===BS.activeIdx&&BS.phase==='player'){
+        bcx.strokeStyle='rgba(100,220,255,.9)';bcx.lineWidth=2.5;bcx.setLineDash([5,3]);bcx.lineDashOffset=-bgT*14;
+        bcx.beginPath();bcx.arc(bx0,by0,40,0,Math.PI*2);bcx.stroke();bcx.setLineDash([]);
+      }
+      if(BS.birdsActed?.has(i)){
+        bcx.save();bcx.fillStyle='#44ff88';bcx.font='bold 13px serif';bcx.textAlign='center';
+        bcx.fillText('✓',bx0+32,by0-32);bcx.restore();
+      }
+      // Partner label
+      if(i===1){
+        bcx.font='bold 10px Nunito,sans-serif';bcx.textAlign='center';bcx.textBaseline='bottom';
+        bcx.fillStyle='rgba(100,220,255,.9)';bcx.strokeStyle='rgba(0,0,0,.8)';bcx.lineWidth=2;
+        bcx.strokeText(COOP.partnerName||'Compañero',bx0,by0-38);
+        bcx.fillText(COOP.partnerName||'Compañero',bx0,by0-38);
+      }
+    });
+    // Enemies right side
+    const eSlots=[[.5,.5],[.42,.28],[.58,.28],[.5,.75]];
+    BS.enemies.forEach((e,i)=>{
+      if(i>=4){ENEMY_POS[i]={x:W*.99,y:H*.5};return;}
+      const s=eSlots[Math.min(i,3)];
+      const ex0=W*(.58+.38*s[0]),ey0=H*(.38+s[1]*.38)+(isAlive(e)?Math.sin(bgT*1.2+i)*3:0);
+      ENEMY_POS[i]={x:ex0,y:ey0};
+      if(!isAlive(e))return;
+      const shk=ANIM.getEnemyShake(i),ea=ANIM.getEnemyOffset(i);
+      const ex=ex0+shk.dx+ea.dx,ey=ey0+shk.dy+ea.dy;
+      const er=(e.isGiant?48:30)*shk.sc;
+      bcx.save();bcx.globalAlpha=.12;bcx.fillStyle='#000';bcx.beginPath();bcx.ellipse(ex0,ey0+H*.1,e.isGiant?40:24,e.isGiant?10:7,0,0,Math.PI*2);bcx.fill();bcx.restore();
+      bcx.save();bcx.translate(ex,ey);bcx.rotate(ea.rot||0);
+      e.draw(bcx,0,0,er,!blink,e);bcx.restore();
+      if(i===BS.targetIdx&&BS.phase==='player'){
+        bcx.strokeStyle='rgba(255,50,50,.9)';bcx.lineWidth=2.5;bcx.setLineDash([4,3]);bcx.lineDashOffset=-bgT*11;
+        bcx.beginPath();bcx.arc(ex0,ey0,e.isGiant?58:38,0,Math.PI*2);bcx.stroke();bcx.setLineDash([]);
+        bcx.font='bold 10px Nunito,sans-serif';bcx.textAlign='center';bcx.textBaseline='bottom';
+        bcx.fillStyle='rgba(255,160,160,.9)';bcx.strokeStyle='rgba(0,0,0,.8)';bcx.lineWidth=2.5;
+        bcx.strokeText(e.name,ex0,ey0-(e.isGiant?62:42));bcx.fillText(e.name,ex0,ey0-(e.isGiant?62:42));
+      }
+    });
+    ANIM.tickProjectiles(bcx);
+    const d=BS.drag;
+    if(d.on){
+      const dc=document.getElementById('drag-cv').getContext('2d');
+      dc.clearRect(0,0,bcv.width,bcv.height);
+      const bp=BIRD_POS[d.bi];
+      if(bp){dc.save();dc.strokeStyle='rgba(100,220,255,.5)';dc.lineWidth=2.5;dc.setLineDash([6,4]);dc.beginPath();dc.moveTo(bp.x,bp.y);dc.lineTo(d.cx,d.cy);dc.stroke();dc.setLineDash([]);dc.restore();}
+    }
+  });
+}
+
+function coopBattleEnd(won){
+  BS._coopMode=false;
+  coopSend({type:'coop_over',won});
+  COLI.noBattleItems=false;
+  screenFlash(won?'rgba(255,255,80,.5)':'rgba(60,0,0,.8)',400);
+  if(won){spawnConfetti(60);COOP.completed.add(BS._coopNode?.id);}
+  else screenShake(8,400);
+  setTimeout(()=>{
+    showResult(won);
+    setTimeout(()=>{
+      const t=document.getElementById('res-title');
+      const s=document.getElementById('res-sub');
+      if(t)t.textContent=won?'¡VICTORIA COOPERATIVA!':'DERROTA';
+      if(s)s.textContent=won?'¡Ganasteis juntos!':'Inténtadlo de nuevo…';
+      // Override retry button to go back to coop map
+      document.getElementById('btn-res-retry').onclick=()=>{stopLoop();showCoopMapScreen();};
+    },80);
+  },600);
 }
 
 function showCoopMapScreen(){
@@ -6912,6 +7266,7 @@ function doAttack(){
       const ep3=ENEMY_POS[enemyIdx];if(ep3)spawnParts(ep3.x,ep3.y,'#ff8844',d>40?14:8,'exp');
       // PvP: send attack to rival
       if(BS._coliMode)coliSendAction(birdIdx,enemyIdx,d);
+      if(BS._coopMode)coopSend({type:'coop_action',enemyIdx,dmg:d,name:COOP.myName||'Tú'});
     },
     ()=>{// onDone
       if(checkWin())return;ensureEnemy();
@@ -6956,6 +7311,11 @@ function startEnemyTurn(){
   BS.birdsActed=new Set();
   BS.activeIdx=BS.birds.findIndex(b=>isAlive(b));
   if(BS.activeIdx<0)BS.activeIdx=0;
+  if(BS._coopMode){
+    // In coop: enemy turn runs locally; after, both players get new turn
+    BS.birdsActed=new Set();BS.activeIdx=0;
+    setTurnUI('enemy');setTimeout(doEnemyTurn,320);return;
+  }
   if(BS._coliMode){
     coliSendEndTurn();
     BS.phase='net-wait';
@@ -7215,6 +7575,8 @@ function doEnemyTurn(){
               if(BS.activeIdx<0)BS.activeIdx=0;
               BS.phase='player';BS._turn=(BS._turn||0)+1;setTurnUI('player');
               blog('🎮 Turno '+(BS._turn||1)+'!','ll-sys');
+              // In coop: sync our HP to partner so they see updated HP
+              if(BS._coopMode)coopSend({type:'coop_hp_sync',hp:BS.birds[0]?.hp||0});
             },900);
           }
           return;
@@ -7277,7 +7639,7 @@ function doEnemyTurn(){
           if(t<1){requestAnimationFrame(gStep);}
           else{
             if((ANIM.active?ANIM.active.type:null)==='enemy')ANIM.active=null;
-            if(BS.birds.every(b=>!isAlive(b))){if(!tryReviveFromReserve())setTimeout(()=>showResult(false),400);return;}
+            if(BS.birds.every(b=>!isAlive(b))){if(!tryReviveFromReserve()){if(BS._coopMode)coopBattleEnd(false);else setTimeout(()=>showResult(false),400);}return;}
             if(seq===alive.length-1){
               setTimeout(()=>{
                 BS.birds.forEach(b=>{if(isAlive(b))tickBuffs(b);});
@@ -7329,7 +7691,7 @@ function doEnemyTurn(){
         else{
           if((ANIM.active?ANIM.active.type:null)==='enemy')ANIM.active=null;
           ANIM.projectiles=ANIM.projectiles.filter(p=>p.type!=='arrow'||p.t>.8);
-          if(BS.birds.every(b=>!isAlive(b))){if(!tryReviveFromReserve())setTimeout(()=>showResult(false),400);return;}
+          if(BS.birds.every(b=>!isAlive(b))){if(!tryReviveFromReserve()){if(BS._coopMode)coopBattleEnd(false);else setTimeout(()=>showResult(false),400);}return;}
           if(seq===alive.length-1){
             setTimeout(()=>{
               BS.birds.forEach(b=>{if(isAlive(b))tickBuffs(b);});
@@ -7353,11 +7715,8 @@ function doEnemyTurn(){
 function checkWin(){
   if(!BS.enemies.every(e=>!isAlive(e)))return false;
   // PvP mode: I killed all rival birds → I win
-  if(BS._coliMode){
-    BS.phase='over';setTurnUI('busy');
-    setTimeout(()=>coliEnd(true),600);
-    return true;
-  }
+  if(BS._coliMode){BS.phase='over';setTurnUI('busy');setTimeout(()=>coliEnd(true),600);return true;}
+  if(BS._coopMode){BS.phase='over';setTurnUI('busy');setTimeout(()=>coopBattleEnd(true),600);return true;}
   // Check if there are more waves
   if(BS._waves&&BS._waveIdx<BS._waves.length-1){
     // More waves — start advance animation
