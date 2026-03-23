@@ -2219,6 +2219,51 @@ const S={
 
 function drawWeaponOnBird(cx,birdId,r,wId){
   if(!wId)return;
+  // Coop player weapons use COOP_RECIPES, not DROP_ITEMS
+  if(birdId==='coopPlayer'){
+    const rec=COOP_RECIPES[wId]; if(!rec)return;
+    const s=r*1.1; cx.save();
+    const wt=rec.weapType||'melee';
+    const tier=rec.craftTier||1;
+    // Tier colors
+    const cols=[[['#8B4513','#D2691E'],['#888','#ddd'],['#c8a018','#ffe860'],['#6060ff','#aaaaff'],['#cc3399','#ff88ee']]][0];
+    const col=cols[Math.min(tier-1,4)]||cols[0];
+    if(wt==='melee'){
+      // Axe/sword shape on right side
+      cx.translate(s*.55,s*.05);cx.rotate(-.3);
+      cx.strokeStyle=col[0];cx.lineWidth=s*.1;cx.lineCap='round';
+      cx.beginPath();cx.moveTo(0,s*.5);cx.lineTo(0,-s*.5);cx.stroke();
+      cx.fillStyle=col[1];cx.beginPath();
+      cx.moveTo(s*.05,-s*.35);cx.lineTo(s*.38,-s*.48);cx.lineTo(s*.32,-s*.18);cx.closePath();cx.fill();
+      if(tier>=3){cx.shadowColor=col[1];cx.shadowBlur=s*.4;}
+    } else if(wt==='ranged'){
+      // Bow shape
+      cx.translate(s*.5,0);
+      cx.strokeStyle=col[0];cx.lineWidth=s*.08;
+      cx.beginPath();cx.arc(-s*.1,0,s*.45,.8,2.35);cx.stroke();
+      cx.strokeStyle=col[1];cx.lineWidth=s*.03;cx.setLineDash([s*.05,s*.03]);
+      cx.beginPath();cx.moveTo(-s*.1,-s*.38);cx.lineTo(-s*.1,s*.38);cx.stroke();cx.setLineDash([]);
+    } else if(wt==='explosive'){
+      // Bomb shape
+      cx.translate(s*.5,-s*.1);
+      cx.fillStyle=col[0];cx.beginPath();cx.arc(0,s*.15,s*.3,0,Math.PI*2);cx.fill();
+      cx.strokeStyle=col[1];cx.lineWidth=s*.05;cx.stroke();
+      cx.strokeStyle='#8B4513';cx.lineWidth=s*.06;
+      cx.beginPath();cx.moveTo(0,-s*.15);cx.lineTo(s*.12,-s*.42);cx.stroke();
+      if(tier>=3){cx.fillStyle='rgba(255,80,0,.7)';cx.beginPath();cx.arc(s*.12,-s*.44,s*.08,0,Math.PI*2);cx.fill();}
+    } else if(wt==='magic'){
+      // Staff/wand shape
+      cx.translate(s*.48,s*.08);cx.rotate(-.2);
+      cx.strokeStyle=col[0];cx.lineWidth=s*.09;cx.lineCap='round';
+      cx.beginPath();cx.moveTo(0,s*.5);cx.lineTo(0,-s*.4);cx.stroke();
+      cx.shadowColor=col[1];cx.shadowBlur=s*.5;
+      cx.fillStyle=col[1];cx.beginPath();cx.arc(0,-s*.48,s*.15,0,Math.PI*2);cx.fill();
+      // sparkle
+      cx.fillStyle='rgba(255,255,255,.8)';cx.font=(s*.18)+'px serif';cx.textAlign='center';
+      cx.fillText('✨',0,-s*.48);
+    }
+    cx.restore(); return;
+  }
   const item=DROP_ITEMS[wId];if(!item)return;
   const s=r*1.15; // scale
   cx.save();
@@ -3480,17 +3525,31 @@ const ZONE_DROPS=[
 
 /* ═══ COOP RECIPES ═══ */
 const COOP_RECIPES = {
-  // Weapons (T1–T4)
-  cw1: {id:'cw1',name:'Porra Rota',      icon:'🪵',type:'weapon',craftTier:1,recipe:{wood:2},         baseEff:{atk:6,spDmg:10}},
-  cw2: {id:'cw2',name:'Cuchillo Mellado',icon:'🔪',type:'weapon',craftTier:1,recipe:{leather:2,wood:1},baseEff:{atk:9,spDmg:14}},
-  cw3: {id:'cw3',name:'Hacha de Hierro', icon:'🪓',type:'weapon',craftTier:2,recipe:{iron:3,wood:1},   baseEff:{atk:16,spDmg:22}},
-  cw4: {id:'cw4',name:'Espada de Cristal',icon:'💎',type:'weapon',craftTier:3,recipe:{crystal:2,iron:2},baseEff:{atk:24,spDmg:34}},
-  cw5: {id:'cw5',name:'Hoja del Dragón', icon:'🐉',type:'weapon',craftTier:4,recipe:{dragonscale:2,crystal:2},baseEff:{atk:36,spDmg:52}},
-  // Armors (T1–T4)
-  ca1: {id:'ca1',name:'Capucha de Cuero', icon:'🪖',type:'armor',craftTier:1,recipe:{leather:3},        baseEff:{def:5,maxHp:15}},
-  ca2: {id:'ca2',name:'Pechera de Hierro',icon:'🛡️',type:'armor',craftTier:2,recipe:{iron:3,leather:1},  baseEff:{def:12,maxHp:25}},
-  ca3: {id:'ca3',name:'Coraza Dorada',    icon:'🥇',type:'armor',craftTier:3,recipe:{crystal:1,iron:3},  baseEff:{def:20,maxHp:40}},
-  ca4: {id:'ca4',name:'Armadura Dragón',  icon:'🐉',type:'armor',craftTier:4,recipe:{dragonscale:2,crystal:1},baseEff:{def:30,maxHp:65}},
+  // ── MELEE (porra → hacha → espada → dragón) ──
+  cw_m1:{id:'cw_m1',name:'Porra de Madera',   icon:'🪵',type:'weapon',weapType:'melee',   craftTier:1,recipe:{wood:3},              baseEff:{atk:7,spDmg:12}, spEff:'aoe',     spName:'Golpe Giratorio'},
+  cw_m2:{id:'cw_m2',name:'Hacha de Hierro',   icon:'🪓',type:'weapon',weapType:'melee',   craftTier:2,recipe:{iron:3,wood:1},       baseEff:{atk:16,spDmg:24},spEff:'aoe',     spName:'Torbellino'},
+  cw_m3:{id:'cw_m3',name:'Gran Espada',       icon:'⚔️', type:'weapon',weapType:'melee',   craftTier:3,recipe:{crystal:1,iron:3},    baseEff:{atk:26,spDmg:38},spEff:'buff',    spName:'Carga Furiosa'},
+  cw_m4:{id:'cw_m4',name:'Hoja del Dragón',   icon:'🐉',type:'weapon',weapType:'melee',   craftTier:4,recipe:{dragonscale:2,crystal:2},baseEff:{atk:38,spDmg:56},spEff:'aoe',  spName:'Corte Dragón'},
+  // ── RANGED (honda → arco → ballesta → cañón) ──
+  cw_r1:{id:'cw_r1',name:'Honda de Piedra',   icon:'🪨',type:'weapon',weapType:'ranged',  craftTier:1,recipe:{leather:2,wood:1},    baseEff:{atk:8,spDmg:14}, spEff:'multienemy',spName:'Pedrada Triple'},
+  cw_r2:{id:'cw_r2',name:'Arco de Madera',    icon:'🏹',type:'weapon',weapType:'ranged',  craftTier:2,recipe:{wood:2,feather:2},    baseEff:{atk:14,spDmg:20},spEff:'multienemy',spName:'Lluvia de Flechas'},
+  cw_r3:{id:'cw_r3',name:'Ballesta de Hierro',icon:'🎯',type:'weapon',weapType:'ranged',  craftTier:3,recipe:{iron:3,feather:1},    baseEff:{atk:22,spDmg:32},spEff:'multienemy',spName:'Disparo Perforante'},
+  cw_r4:{id:'cw_r4',name:'Cañón de Cristal', icon:'💎',type:'weapon',weapType:'ranged',  craftTier:4,recipe:{crystal:3,iron:2},    baseEff:{atk:32,spDmg:48},spEff:'multienemy',spName:'Ráfaga de Cristal'},
+  // ── EXPLOSIVES (bomba → petardo → dinamita → fusión) ──
+  cw_e1:{id:'cw_e1',name:'Bomba de Barro',    icon:'💣',type:'weapon',weapType:'explosive',craftTier:1,recipe:{wood:1,leather:2},   baseEff:{atk:6,spDmg:18}, spEff:'aoe',     spName:'Explosión Barro'},
+  cw_e2:{id:'cw_e2',name:'Petardo de Hierro', icon:'🧨',type:'weapon',weapType:'explosive',craftTier:2,recipe:{iron:2,wood:2},      baseEff:{atk:12,spDmg:30},spEff:'aoe',     spName:'Detonación'},
+  cw_e3:{id:'cw_e3',name:'Dinamita',          icon:'💥',type:'weapon',weapType:'explosive',craftTier:3,recipe:{crystal:1,iron:2,feather:1},baseEff:{atk:18,spDmg:46},spEff:'aoe',spName:'Megaexplosión'},
+  cw_e4:{id:'cw_e4',name:'Bomba de Dragón',   icon:'🔥',type:'weapon',weapType:'explosive',craftTier:4,recipe:{dragonscale:2,iron:2},baseEff:{atk:24,spDmg:65},spEff:'aoe',    spName:'Inferno Total'},
+  // ── MAGIC (varita → cetro → báculo → gema) ──
+  cw_mg1:{id:'cw_mg1',name:'Varita de Madera', icon:'🪄',type:'weapon',weapType:'magic',  craftTier:1,recipe:{wood:2,feather:1},    baseEff:{atk:5,spDmg:16,healBonus:8}, spEff:'heal',spName:'Chispa Curativa'},
+  cw_mg2:{id:'cw_mg2',name:'Cetro de Cristal', icon:'🔮',type:'weapon',weapType:'magic',  craftTier:2,recipe:{crystal:2,feather:1}, baseEff:{atk:10,spDmg:26,healBonus:16},spEff:'heal',spName:'Pulso Arcano'},
+  cw_mg3:{id:'cw_mg3',name:'Báculo Dorado',    icon:'⭐',type:'weapon',weapType:'magic',  craftTier:3,recipe:{crystal:2,iron:1,feather:2},baseEff:{atk:16,spDmg:38,healBonus:26},spEff:'heal',spName:'Lluvia Sagrada'},
+  cw_mg4:{id:'cw_mg4',name:'Gema del Dragón',  icon:'🌟',type:'weapon',weapType:'magic',  craftTier:4,recipe:{dragonscale:1,crystal:3},baseEff:{atk:22,spDmg:52,healBonus:40},spEff:'heal',spName:'Gran Renacimiento'},
+  // ── ARMORS (T1–T4) ──
+  ca1:{id:'ca1',name:'Capucha de Cuero',  icon:'🪖',type:'armor',craftTier:1,recipe:{leather:3},               baseEff:{def:5,maxHp:15}},
+  ca2:{id:'ca2',name:'Pechera de Hierro', icon:'🛡️', type:'armor',craftTier:2,recipe:{iron:3,leather:1},         baseEff:{def:12,maxHp:25}},
+  ca3:{id:'ca3',name:'Coraza Dorada',     icon:'🥇',type:'armor',craftTier:3,recipe:{crystal:1,iron:3},          baseEff:{def:20,maxHp:40}},
+  ca4:{id:'ca4',name:'Armadura Dragón',   icon:'🐉',type:'armor',craftTier:4,recipe:{dragonscale:2,crystal:1},   baseEff:{def:30,maxHp:65}},
 };
 
 /* ─── 5 ZONES × 6 nodes ─── */
@@ -3647,11 +3706,9 @@ function buildCoopPlayerInst(){
   // Attack type depends on equipped weapon
   const wId=COOP_GS.equippedWeapon;
   const wRec=wId?COOP_RECIPES[wId]:null;
-  // Weapon categories: melee=cw1,cw3,cw5  ranged=cw2,cw4
-  const weapType=wRec?{cw1:'melee',cw2:'ranged',cw3:'melee',cw4:'ranged',cw5:'melee'}[wId]||'melee':'melee';
-  // spEff and allyEff change based on weapon
-  const spEff=weapType==='ranged'?'multienemy':'aoe';
-  const spName=weapType==='ranged'?'Lluvia de Cuchillos':'Máscara Furiosa';
+  const weapType=wRec?.weapType||'melee';
+  const spEff=wRec?.spEff||'aoe';
+  const spName=wRec?.spName||'Máscara Furiosa';
   let atk=20,def=6,maxHp=120,spDmg=45;
   if(wRec){const e=coopCraftedEff(wId);atk+=e.atk||0;spDmg+=e.spDmg||0;}
   if(COOP_GS.equippedArmor){const e=coopCraftedEff(COOP_GS.equippedArmor);def+=e.def||0;maxHp+=e.maxHp||0;}
@@ -7404,7 +7461,7 @@ function updPotBtn(){
     resBtn.style.display=(BS.phase==='player'&&hasReserves&&hasDeadSlot)?'':'none';
   }
   const etBtn=document.getElementById('btn-end-turn');
-  if(etBtn){
+  if(etBtn){etBtn.style.display=BS._coopMode?'none':'';
     const acted=BS.birdsActed?BS.birdsActed.size:0;
     const isPlayer=BS.phase==='player';
     etBtn.disabled=!isPlayer||acted===0;
@@ -7732,7 +7789,8 @@ document.getElementById('btn-reserve').addEventListener('click',()=>{
 
 document.getElementById('btn-end-turn').addEventListener('click',()=>{
   if(BS.phase!=='player')return;
-  if(!BS.birdsActed||BS.birdsActed.size===0)return; // need at least 1 action
+  if(BS._coopMode)return; // in coop, turn ends automatically when bird acts
+  if(!BS.birdsActed||BS.birdsActed.size===0)return;
   startEnemyTurn();
 });
 
