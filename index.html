@@ -721,7 +721,26 @@ function drawArmorOverlay(cx,r,tier,birdId){
 /* ── Unique armor sprite per recipe ID ── */
 function drawArmorByRecipe(cx,r,recipeId,birdId){
   if(!recipeId)return;
-  const rec=RECIPES[recipeId];if(!rec||rec.type!=='armor')return;
+  // Check both SP recipes and coop recipes
+  const rec=RECIPES[recipeId]||(COOP_RECIPES?.[recipeId]);
+  if(!rec||rec.type!=='armor')return;
+  // For coop armors (ca1-ca4), draw a generic armor overlay since they have no bird-specific sprite
+  if(recipeId.startsWith('ca')){
+    const tier=rec.craftTier||1;
+    const cols=[[['#8B4513','#D2691E','#4a2000'],['#888','#ccc','#444'],['#c8a018','#ffe860','#7a5800'],['#3a6ada','#8ab0ff','#0a2280']]][0];
+    const col=cols[Math.min(tier-1,3)]||cols[0];
+    cx.save();
+    // Chest plate over the pig body
+    const cg=cx.createLinearGradient(-r*.5,r*.05,r*.5,r*.7);cg.addColorStop(0,col[1]);cg.addColorStop(.5,col[0]);cg.addColorStop(1,col[2]);
+    cx.fillStyle=cg;cx.beginPath();cx.moveTo(-r*.52,r*.08);cx.lineTo(r*.52,r*.08);cx.lineTo(r*.48,r*.72);cx.lineTo(-r*.48,r*.72);cx.closePath();cx.fill();
+    cx.strokeStyle=col[2];cx.lineWidth=r*.04;cx.stroke();
+    // Shoulders
+    [-1,1].forEach(s=>{cx.fillStyle=col[0];cx.beginPath();cx.arc(s*r*.68,-r*.05,r*.26,0,Math.PI*2);cx.fill();cx.strokeStyle=col[2];cx.lineWidth=r*.03;cx.stroke();});
+    // Helmet rim
+    cx.fillStyle=col[1];cx.beginPath();cx.arc(0,-r*.62,r*.38,Math.PI,2*Math.PI);cx.fill();cx.strokeStyle=col[2];cx.lineWidth=r*.04;cx.stroke();
+    if(tier>=3){cx.shadowColor=col[1];cx.shadowBlur=r*.4;}
+    cx.restore();return;
+  }
 
   const t=rec.craftTier||0;
   const [c1,c2,c3]=ARMOR_COLS[Math.min(t,4)];
@@ -3566,6 +3585,12 @@ const COOP_RECIPES = {
   ca2:{id:'ca2',name:'Pechera de Hierro', icon:'🛡️', type:'armor',craftTier:2,recipe:{iron:3,leather:1},         baseEff:{def:12,maxHp:25}},
   ca3:{id:'ca3',name:'Coraza Dorada',     icon:'🥇',type:'armor',craftTier:3,recipe:{crystal:1,iron:3},          baseEff:{def:20,maxHp:40}},
   ca4:{id:'ca4',name:'Armadura Dragón',   icon:'🐉',type:'armor',craftTier:4,recipe:{dragonscale:2,crystal:1},   baseEff:{def:30,maxHp:65}},
+  // Special armors with unique effects
+  ca_s1:{id:'ca_s1',name:'Túnica del Sabio',icon:'🌿',type:'armor',craftTier:2,recipe:{feather:3,leather:2},baseEff:{def:6,maxHp:20,healBonus:15},special:'sage',specialDesc:'Curas +15HP extra'},
+  ca_s2:{id:'ca_s2',name:'Coraza Espinosa', icon:'🌵',type:'armor',craftTier:3,recipe:{iron:4,crystal:1},  baseEff:{def:18,maxHp:15},special:'spikes',specialDesc:'Refleja 8dmg al ser golpeado'},
+  ca_s3:{id:'ca_s3',name:'Capa de Sombras', icon:'🌑',type:'armor',craftTier:3,recipe:{crystal:2,feather:2},baseEff:{def:10,maxHp:18},special:'dodge',specialDesc:'12% de esquivar golpes'},
+  ca_s4:{id:'ca_s4',name:'Ropa de Berserker',icon:'💢',type:'armor',craftTier:3,recipe:{iron:3,dragonscale:1},baseEff:{def:8,maxHp:10,atk:10},special:'berserk',specialDesc:'+10 ATK pero poca DEF'},
+  ca_s5:{id:'ca_s5',name:'Escudo Arcano',   icon:'🔮',type:'armor',craftTier:4,recipe:{crystal:3,dragonscale:1},baseEff:{def:22,maxHp:45},special:'shield',specialDesc:'Empieza con escudo de 20HP'},
 };
 
 /* ─── 5 ZONES × 6 nodes ─── */
@@ -5328,6 +5353,17 @@ function showCoopInventoryScreen(backFn){
   function hasMats(recipe){return Object.entries(recipe).every(([m,n])=>(COOP_GS.materials[m]||0)>=n);}
   function spendMats(recipe){Object.entries(recipe).forEach(([m,n])=>{COOP_GS.materials[m]=(COOP_GS.materials[m]||0)-n;});}
 
+  // Draw coopPlayer sprite in canvas bg
+  const coopInvCv=document.getElementById('coop-inv-cv');
+  if(coopInvCv.width>0){
+    const coopInvCx=coopInvCv.getContext('2d');
+    drawSky(coopInvCx,coopInvCv.width,coopInvCv.height,bgT,4);
+    const pw=coopInvCv.width,ph=coopInvCv.height;
+    const pr=Math.min(pw,ph)*.12;
+    S.coopPlayer(coopInvCx,pw*.12,ph*.45,pr,false);
+    if(COOP_GS.equippedArmor)drawArmorByRecipe(coopInvCx,pr,COOP_GS.equippedArmor,'coopPlayer');
+    if(COOP_GS.equippedWeapon)drawWeaponOnBird(coopInvCx,'coopPlayer',pr,COOP_GS.equippedWeapon);
+  }
   function renderInv(){
     document.getElementById('coop-inv-gold').textContent='🪙 '+COOP_GS.gold;
     // Tabs
@@ -5425,7 +5461,13 @@ function showCoopInventoryScreen(backFn){
   }
   renderInv();
   showScreen('coop-inv-screen');
-  startLoop(()=>drawSky(cx,cv.width,cv.height,bgT,4));
+  startLoop(()=>{
+    drawSky(cx,cv.width,cv.height,bgT,4);
+    const pr2=Math.min(cv.width,cv.height)*.14;
+    S.coopPlayer(cx,cv.width*.12,cv.height*.45,pr2,false);
+    if(COOP_GS.equippedArmor)drawArmorByRecipe(cx,pr2,COOP_GS.equippedArmor,'coopPlayer');
+    if(COOP_GS.equippedWeapon)drawWeaponOnBird(cx,'coopPlayer',pr2,COOP_GS.equippedWeapon);
+  });
 }
 
 /* ═══ TITLE ═══ */
@@ -7717,6 +7759,8 @@ function markActed(birdIdx, delay){
   BS.phase='busy';
   setTurnUI('busy');
   setTimeout(()=>{
+    // In coop mode: only bird[0] is mine — after it acts, enemy turn immediately
+    if(BS._coopMode){startEnemyTurn();return;}
     const nextIdx=BS.birds.findIndex((b,i)=>isAlive(b)&&!BS.birdsActed.has(i));
     if(nextIdx>=0){
       BS.activeIdx=nextIdx;
