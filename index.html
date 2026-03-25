@@ -3591,6 +3591,39 @@ const COOP_RECIPES = {
   ca_s3:{id:'ca_s3',name:'Capa de Sombras', icon:'🌑',type:'armor',craftTier:3,recipe:{crystal:2,feather:2},baseEff:{def:10,maxHp:18},special:'dodge',specialDesc:'12% de esquivar golpes'},
   ca_s4:{id:'ca_s4',name:'Ropa de Berserker',icon:'💢',type:'armor',craftTier:3,recipe:{iron:3,dragonscale:1},baseEff:{def:8,maxHp:10,atk:10},special:'berserk',specialDesc:'+10 ATK pero poca DEF'},
   ca_s5:{id:'ca_s5',name:'Escudo Arcano',   icon:'🔮',type:'armor',craftTier:4,recipe:{crystal:3,dragonscale:1},baseEff:{def:22,maxHp:45},special:'shield',specialDesc:'Empieza con escudo de 20HP'},
+
+  // ── EXTRA WEAPONS T1-T4 per type ──
+  // Melee T0 starter
+  cw_m0:{id:'cw_m0',allyBonus:{type:'defBuff',val:2},name:'Puño Peludo',     icon:'👊',type:'weapon',weapType:'melee',   craftTier:0,recipe:{},               baseEff:{atk:4,spDmg:8},  spEff:'aoe',     spName:'Paliza'},
+  // Ranged T0 starter
+  cw_r0:{id:'cw_r0',allyBonus:{type:'atkBuff',val:2},name:'Lanzahuesos',     icon:'🦴',type:'weapon',weapType:'ranged',  craftTier:0,recipe:{},               baseEff:{atk:5,spDmg:9},  spEff:'multienemy',spName:'Hueso Volador'},
+  // Explosive T0 starter
+  cw_e0:{id:'cw_e0',allyBonus:{type:'rageBoost',val:10},name:'Granada de Lodo',icon:'💩',type:'weapon',weapType:'explosive',craftTier:0,recipe:{},            baseEff:{atk:3,spDmg:14}, spEff:'aoe',     spName:'Salpicón'},
+  // Magic T0 starter
+  cw_mg0:{id:'cw_mg0',allyBonus:{type:'healAlly',val:12},name:'Ramita Mágica',icon:'🌿',type:'weapon',weapType:'magic',  craftTier:0,recipe:{},               baseEff:{atk:3,spDmg:10,healBonus:5},spEff:'heal',spName:'Brote Curativo'},
+  // Extra melee
+  cw_m5:{id:'cw_m5',allyBonus:{type:'defBuff',val:30},name:'Mazo del Coloso', icon:'🪨',type:'weapon',weapType:'melee',   craftTier:4,recipe:{dragonscale:3,iron:2},baseEff:{atk:44,spDmg:65},spEff:'aoe',spName:'Terremoto'},
+  // Extra ranged
+  cw_r5:{id:'cw_r5',allyBonus:{type:'atkBuff',val:30},name:'Arco del Destino',icon:'🎪',type:'weapon',weapType:'ranged',  craftTier:4,recipe:{dragonscale:2,feather:3},baseEff:{atk:36,spDmg:55},spEff:'multienemy',spName:'Tormenta de Flechas'},
+  // Extra explosive
+  cw_e5:{id:'cw_e5',allyBonus:{type:'rageBoost',val:70},name:'Nova de Plasma', icon:'☢️', type:'weapon',weapType:'explosive',craftTier:4,recipe:{dragonscale:3,crystal:2},baseEff:{atk:30,spDmg:80},spEff:'aoe',spName:'Colapso Total'},
+  // Extra magic
+  cw_mg5:{id:'cw_mg5',allyBonus:{type:'healAlly',val:130},name:'Orbe del Infinito',icon:'💫',type:'weapon',weapType:'magic',craftTier:4,recipe:{dragonscale:2,crystal:3},baseEff:{atk:28,spDmg:68,healBonus:55},spEff:'heal',spName:'Resurrección'},
+
+  // ── EXTRA ARMORS ──
+  // T1 extras
+  ca_l1:{id:'ca_l1',name:'Faja de Cuero',    icon:'🩱',type:'armor',craftTier:1,recipe:{leather:2,wood:1},        baseEff:{def:4,maxHp:20}},
+  ca_l2:{id:'ca_l2',name:'Peto Acolchado',   icon:'🧥',type:'armor',craftTier:1,recipe:{leather:3,feather:1},     baseEff:{def:3,maxHp:30}},
+  // T2 extras
+  ca_i1:{id:'ca_i1',name:'Grebas de Hierro', icon:'🦿',type:'armor',craftTier:2,recipe:{iron:2,leather:2},        baseEff:{def:10,maxHp:35}},
+  ca_i2:{id:'ca_i2',name:'Casco de Hierro',  icon:'⛑️', type:'armor',craftTier:2,recipe:{iron:4},                  baseEff:{def:16,maxHp:10}},
+  // T3 extras
+  ca_g1:{id:'ca_g1',name:'Manto del Mago',   icon:'🧙',type:'armor',craftTier:3,recipe:{crystal:2,feather:3},     baseEff:{def:8,maxHp:35,healBonus:12}},
+  ca_g2:{id:'ca_g2',name:'Armadura de Guerra',icon:'⚔️', type:'armor',craftTier:3,recipe:{iron:4,crystal:1},       baseEff:{def:24,maxHp:20}},
+  // T4 extras
+  ca_d1:{id:'ca_d1',name:'Escamas del Dragón',icon:'🐲',type:'armor',craftTier:4,recipe:{dragonscale:3,crystal:1}, baseEff:{def:28,maxHp:55}},
+  ca_d2:{id:'ca_d2',name:'Traje Oscuro',      icon:'🦇',type:'armor',craftTier:4,recipe:{dragonscale:2,feather:3}, baseEff:{def:20,maxHp:70},special:'shadow',specialDesc:'Regenera 5HP/turno'},
+  ca_d3:{id:'ca_d3',name:'Armadura Rúnica',   icon:'🔰',type:'armor',craftTier:4,recipe:{dragonscale:2,crystal:2}, baseEff:{def:26,maxHp:40},special:'rune',   specialDesc:'Super carga 20% más rápido'},
 };
 
 /* ─── 5 ZONES × 6 nodes ─── */
@@ -4611,76 +4644,99 @@ function tryReviveFromReserve(){
 function coliTryReviveFromReserve(){ return tryReviveFromReserve(); }
 
 
+/* ═══ COOP ENEMY POOL — exclusive to cooperative mode ═══ */
+const COOP_ENEMY_POOL={
+  // Normal enemies
+  grunt:    {name:'Grunt Enmascarado', type:'Soldado',  maxHp:80,  atk:16,def:4, spDmg:28,spCh:.22,draw:(cx,x,y,r,bl)=>S.pig(cx,x,y,r,bl,0,0,0)},
+  shieldOrc:{name:'Orco Escudero',    type:'Defensor', maxHp:130, atk:14,def:18,spDmg:24,spCh:.25,draw:(cx,x,y,r,bl)=>S.pig(cx,x,y,r,bl,1,0,0)},
+  poisoner: {name:'Envenenador',      type:'Tramposo', maxHp:95,  atk:20,def:6, spDmg:35,spCh:.35,poisonOnHit:true, draw:(cx,x,y,r,bl)=>S.pigNinja(cx,x,y,r,bl)},
+  bomber:   {name:'Bombardero',       type:'Explosivo',maxHp:110, atk:18,def:5, spDmg:50,spCh:.3, draw:(cx,x,y,r,bl)=>S.pig(cx,x,y,r,bl,0,0,1)},
+  curseWitch:{name:'Hechicera Maldita',type:'Maga',    maxHp:100, atk:14,def:8, spDmg:42,spCh:.4, draw:(cx,x,y,r,bl)=>S.pigNecro(cx,x,y,r,bl)},
+  ironGuard:{name:'Guardia de Hierro',type:'Élite',    maxHp:180, atk:22,def:20,spDmg:38,spCh:.28,draw:(cx,x,y,r,bl)=>S.pig(cx,x,y,r,bl,1,0,1)},
+  shadowArch:{name:'Arquero Sombra',  type:'Sigiloso', maxHp:90,  atk:24,def:5, spDmg:40,spCh:.4, dodgeChance:.15, draw:(cx,x,y,r,bl)=>S.pigArcher(cx,x,y,r,bl)},
+  berserkOrc:{name:'Orco Berserker',  type:'Salvaje',  maxHp:160, atk:28,def:8, spDmg:55,spCh:.35,enrageBelow:.5, draw:(cx,x,y,r,bl)=>S.pigBerserker(cx,x,y,r,bl)},
+  // Elite enemies
+  dualBlade:{name:'Maestro del Filo', type:'Élite',    maxHp:200, atk:26,def:14,spDmg:60,spCh:.38,draw:(cx,x,y,r,bl)=>S.pigKnight(cx,x,y,r,bl)},
+  plagueDoc:{name:'Doctor de la Plaga',type:'Mago',   maxHp:170, atk:18,def:12,spDmg:55,spCh:.38,burnOnHit:true,  draw:(cx,x,y,r,bl)=>S.pigPyro(cx,x,y,r,bl)},
+  // Mini-bosses
+  coopMiniboss1:{name:'Capitán Hierro',type:'⚠ Capitán',maxHp:320,atk:28,def:22,spDmg:65,spCh:.35,draw:(cx,x,y,r,bl)=>S.pig(cx,x,y,r,bl,1,1,0)},
+  coopMiniboss2:{name:'Maga del Abismo',type:'⚠ Maga', maxHp:280, atk:24,def:16,spDmg:80,spCh:.4, draw:(cx,x,y,r,bl)=>S.pigNecro(cx,x,y,r,bl)},
+  // Boss
+  coopBoss:{name:'El Gran Enmascarado',type:'👑 BOSS', maxHp:600, atk:35,def:25,spDmg:100,spCh:.45,
+    isGiant:true,chargeMax:2,chargeDmg:90,chargeSpName:'Golpe Cósmico',regenPerTurn:8,
+    draw:(cx,x,y,r,bl,e)=>S.pigGiant(cx,x,y,r,bl,0,e?.chargeT||0,e?.chargeMax||2)},
+};
+
 /* ═══ COOP ZONES — 7 zones, 10 nodes each ═══ */
 const COOP_ZONES=[
   { id:'cz0', name:'🌿 Pantano Verdoso',   theme:1, color:'#1a4a1a',
     nodes:[
-      {id:'cz0n0',label:'Entrada del Pantano',  enemies:['pig','pig'],           boss:false},
-      {id:'cz0n1',label:'Sendero Lodoso',        enemies:['pig','pig2'],          boss:false},
-      {id:'cz0n2',label:'Ciénaga Profunda',      enemies:['pig2','pig2'],         boss:false},
-      {id:'cz0n3',label:'Emboscada',             enemies:['pig','pig','pig2'],    boss:false},
-      {id:'cz0n4',label:'Claro del Pantano',     enemies:['pig2','helmet'],       boss:false},
-      {id:'cz0n5',label:'Nido de Ranas',         enemies:['pig2','pig2','pig'],   boss:false},
-      {id:'cz0n6',label:'Puente Podrido',        enemies:['helmet','pig2'],       boss:false},
-      {id:'cz0n7',label:'Caverna Húmeda',        enemies:['helmet','pig2','pig'], boss:false},
-      {id:'cz0n8',label:'Guarida Cenagosa',      enemies:['helmet','helmet'],     boss:false,miniboss:true},
-      {id:'cz0n9',label:'El Pantanero',          enemies:['corporal','pig2','pig2'],boss:true},
+      {id:'cz0n0',label:'Entrada del Pantano',  enemies:['grunt','grunt'],           boss:false},
+      {id:'cz0n1',label:'Sendero Lodoso',        enemies:['grunt','shieldOrc'],          boss:false},
+      {id:'cz0n2',label:'Ciénaga Profunda',      enemies:['shieldOrc','grunt'],         boss:false},
+      {id:'cz0n3',label:'Emboscada',             enemies:['grunt','grunt','poisoner'],    boss:false},
+      {id:'cz0n4',label:'Claro del Pantano',     enemies:['shieldOrc','ironGuard'],       boss:false},
+      {id:'cz0n5',label:'Nido de Ranas',         enemies:['poisoner','shieldOrc','grunt'],   boss:false},
+      {id:'cz0n6',label:'Puente Podrido',        enemies:['ironGuard','shieldOrc'],       boss:false},
+      {id:'cz0n7',label:'Caverna Húmeda',        enemies:['ironGuard','poisoner','grunt'], boss:false},
+      {id:'cz0n8',label:'Guarida Cenagosa',      enemies:['ironGuard','ironGuard'],     boss:false,miniboss:true},
+      {id:'cz0n9',label:'El Pantanero',          enemies:['coopMiniboss1','shieldOrc','grunt'],boss:true},
     ]
   },
   { id:'cz1', name:'🔥 Fábrica Ardiente',  theme:3, color:'#4a1a00',
     nodes:[
-      {id:'cz1n0',label:'Entrada a la Fábrica', enemies:['pig2','pig'],          boss:false},
-      {id:'cz1n1',label:'Sala de Calderas',      enemies:['pyro','pig'],          boss:false},
-      {id:'cz1n2',label:'Pasillo de Vapor',      enemies:['pyro','pig2'],         boss:false},
-      {id:'cz1n3',label:'Zona de Ensamblaje',    enemies:['helmet','pyro'],       boss:false},
-      {id:'cz1n4',label:'Almacén de Lava',       enemies:['pyro','pyro'],         boss:false},
-      {id:'cz1n5',label:'Torre de Humo',         enemies:['corporal','pyro'],     boss:false},
-      {id:'cz1n6',label:'Horno Principal',       enemies:['pyro','helmet','pig'], boss:false},
+      {id:'cz1n0',label:'Entrada a la Fábrica', enemies:['bomber','grunt'],          boss:false},
+      {id:'cz1n1',label:'Sala de Calderas',      enemies:['bomber','grunt'],          boss:false},
+      {id:'cz1n2',label:'Pasillo de Vapor',      enemies:['bomber','shieldOrc'],         boss:false},
+      {id:'cz1n3',label:'Zona de Ensamblaje',    enemies:['ironGuard','bomber'],       boss:false},
+      {id:'cz1n4',label:'Almacén de Lava',       enemies:['bomber','bomber'],         boss:false},
+      {id:'cz1n5',label:'Torre de Humo',         enemies:['coopMiniboss1','bomber'],     boss:false},
+      {id:'cz1n6',label:'Horno Principal',       enemies:['bomber','ironGuard','grunt'], boss:false},
       {id:'cz1n7',label:'Control Central',       enemies:['corporal','pyro'],     boss:false},
-      {id:'cz1n8',label:'Núcleo de Fusión',      enemies:['corporal','pyro','pyro'],boss:false,miniboss:true},
-      {id:'cz1n9',label:'El Incinerador',        enemies:['giant_brute','pyro'],  boss:true},
+      {id:'cz1n8',label:'Núcleo de Fusión',      enemies:['dualBlade','bomber','bomber'],boss:false,miniboss:true},
+      {id:'cz1n9',label:'El Incinerador',        enemies:['coopBoss','bomber'],  boss:true},
     ]
   },
   { id:'cz2', name:'❄️ Tundra Helada',     theme:1, color:'#001a3a',
     nodes:[
-      {id:'cz2n0',label:'Meseta Glacial',        enemies:['ice','pig'],           boss:false},
-      {id:'cz2n1',label:'Sendero Nevado',        enemies:['ice','pig2'],          boss:false},
-      {id:'cz2n2',label:'Lago Congelado',        enemies:['ice','ice'],           boss:false},
-      {id:'cz2n3',label:'Cueva de Hielo',        enemies:['ice','helmet'],        boss:false},
-      {id:'cz2n4',label:'Ventisca',              enemies:['ice','pig2','pig'],    boss:false},
+      {id:'cz2n0',label:'Meseta Glacial',        enemies:['shieldOrc','grunt'],           boss:false},
+      {id:'cz2n1',label:'Sendero Nevado',        enemies:['poisoner','shieldOrc'],          boss:false},
+      {id:'cz2n2',label:'Lago Congelado',        enemies:['poisoner','poisoner'],           boss:false},
+      {id:'cz2n3',label:'Cueva de Hielo',        enemies:['poisoner','ironGuard'],        boss:false},
+      {id:'cz2n4',label:'Ventisca',              enemies:['poisoner','shieldOrc','grunt'],    boss:false},
       {id:'cz2n5',label:'Fortaleza Ártica',      enemies:['helmet','ice'],        boss:false},
-      {id:'cz2n6',label:'Tormenta Polar',        enemies:['corporal','ice'],      boss:false},
-      {id:'cz2n7',label:'Cripta Helada',         enemies:['ice','ice','helmet'],  boss:false},
-      {id:'cz2n8',label:'El Yeti Congelado',     enemies:['giant_shaman','ice'],  boss:false,miniboss:true},
-      {id:'cz2n9',label:'Rey del Hielo',         enemies:['giant_tank','ice','ice'],boss:true},
+      {id:'cz2n6',label:'Tormenta Polar',        enemies:['coopMiniboss1','poisoner'],      boss:false},
+      {id:'cz2n7',label:'Cripta Helada',         enemies:['poisoner','poisoner','ironGuard'],  boss:false},
+      {id:'cz2n8',label:'El Yeti Congelado',     enemies:['coopMiniboss2','poisoner'],  boss:false,miniboss:true},
+      {id:'cz2n9',label:'Rey del Hielo',         enemies:['coopBoss','poisoner','shieldOrc'],boss:true},
     ]
   },
   { id:'cz3', name:'🌑 Caverna Oscura',    theme:4, color:'#0a001a',
     nodes:[
-      {id:'cz3n0',label:'Boca de la Cueva',      enemies:['ninja','pig'],         boss:false},
-      {id:'cz3n1',label:'Túnel Ciego',           enemies:['ninja','pig2'],        boss:false},
-      {id:'cz3n2',label:'Sala de las Sombras',   enemies:['ninja','ninja'],       boss:false},
-      {id:'cz3n3',label:'Pasaje Prohibido',      enemies:['necro','pig2'],        boss:false},
-      {id:'cz3n4',label:'Altar Oscuro',          enemies:['necro','ninja'],       boss:false},
-      {id:'cz3n5',label:'Guarida Subterránea',   enemies:['phantom','ninja'],     boss:false},
-      {id:'cz3n6',label:'Cámara Maldita',        enemies:['necro','phantom'],     boss:false},
-      {id:'cz3n7',label:'Cripta del Señor',      enemies:['necro','ninja','pig'], boss:false},
-      {id:'cz3n8',label:'Sombra Invocada',       enemies:['giant_sorcerer','necro'],boss:false,miniboss:true},
-      {id:'cz3n9',label:'El Señor Oscuro',       enemies:['giant_sorcerer','phantom','necro'],boss:true},
+      {id:'cz3n0',label:'Boca de la Cueva',      enemies:['shadowArch','grunt'],         boss:false},
+      {id:'cz3n1',label:'Túnel Ciego',           enemies:['shadowArch','shieldOrc'],        boss:false},
+      {id:'cz3n2',label:'Sala de las Sombras',   enemies:['shadowArch','shadowArch'],       boss:false},
+      {id:'cz3n3',label:'Pasaje Prohibido',      enemies:['curseWitch','shieldOrc'],        boss:false},
+      {id:'cz3n4',label:'Altar Oscuro',          enemies:['curseWitch','shadowArch'],       boss:false},
+      {id:'cz3n5',label:'Guarida Subterránea',   enemies:['dualBlade','shadowArch'],     boss:false},
+      {id:'cz3n6',label:'Cámara Maldita',        enemies:['curseWitch','dualBlade'],     boss:false},
+      {id:'cz3n7',label:'Cripta del Señor',      enemies:['curseWitch','shadowArch','grunt'], boss:false},
+      {id:'cz3n8',label:'Sombra Invocada',       enemies:['coopMiniboss2','curseWitch'],boss:false,miniboss:true},
+      {id:'cz3n9',label:'El Señor Oscuro',       enemies:['coopBoss','shadowArch','curseWitch'],boss:true},
     ]
   },
   { id:'cz4', name:'⚡ Torre Eléctrica',   theme:2, color:'#1a1a00',
     nodes:[
-      {id:'cz4n0',label:'Base de la Torre',      enemies:['archer','pig'],        boss:false},
-      {id:'cz4n1',label:'Sala de Generadores',   enemies:['archer','pig2'],       boss:false},
-      {id:'cz4n2',label:'Piso del Rayo',         enemies:['archer','archer'],     boss:false},
-      {id:'cz4n3',label:'Zona de Alta Tensión',  enemies:['wizard','archer'],     boss:false},
-      {id:'cz4n4',label:'Cámara de Truenos',     enemies:['berserker','archer'],  boss:false},
-      {id:'cz4n5',label:'Núcleo Eléctrico',      enemies:['wizard','berserker'],  boss:false},
-      {id:'cz4n6',label:'Sala de Control',       enemies:['fortress','archer'],   boss:false},
-      {id:'cz4n7',label:'Tormenta Eléctrica',    enemies:['wizard','archer','archer'],boss:false},
-      {id:'cz4n8',label:'El Relampagueante',     enemies:['giant_brute','wizard'],boss:false,miniboss:true},
-      {id:'cz4n9',label:'Maestro del Trueno',    enemies:['giant_sorcerer','wizard','archer'],boss:true},
+      {id:'cz4n0',label:'Base de la Torre',      enemies:['shadowArch','grunt'],        boss:false},
+      {id:'cz4n1',label:'Sala de Generadores',   enemies:['shadowArch','shieldOrc'],       boss:false},
+      {id:'cz4n2',label:'Piso del Rayo',         enemies:['shadowArch','shadowArch'],     boss:false},
+      {id:'cz4n3',label:'Zona de Alta Tensión',  enemies:['curseWitch','shadowArch'],     boss:false},
+      {id:'cz4n4',label:'Cámara de Truenos',     enemies:['berserkOrc','shadowArch'],  boss:false},
+      {id:'cz4n5',label:'Núcleo Eléctrico',      enemies:['curseWitch','berserkOrc'],  boss:false},
+      {id:'cz4n6',label:'Sala de Control',       enemies:['ironGuard','shadowArch'],   boss:false},
+      {id:'cz4n7',label:'Tormenta Eléctrica',    enemies:['curseWitch','shadowArch','shadowArch'],boss:false},
+      {id:'cz4n8',label:'El Relampagueante',     enemies:['coopMiniboss1','curseWitch'],boss:false,miniboss:true},
+      {id:'cz4n9',label:'Maestro del Trueno',    enemies:['coopBoss','curseWitch','shadowArch'],boss:true},
     ]
   },
   { id:'cz5', name:'🌊 Abismo Marino',     theme:1, color:'#001a2a',
@@ -4688,27 +4744,27 @@ const COOP_ZONES=[
       {id:'cz5n0',label:'Orilla Rocosa',         enemies:['pig','pig2'],          boss:false},
       {id:'cz5n1',label:'Arrecife Peligroso',    enemies:['pig2','helmet'],       boss:false},
       {id:'cz5n2',label:'Cueva Submarina',       enemies:['ice','pig2'],          boss:false},
-      {id:'cz5n3',label:'Corriente Oscura',      enemies:['troll','pig'],         boss:false},
-      {id:'cz5n4',label:'Ruinas Ahogadas',       enemies:['troll','helmet'],      boss:false},
-      {id:'cz5n5',label:'Fosa Abisal',           enemies:['troll','troll'],       boss:false},
-      {id:'cz5n6',label:'El Leviatán Duerme',    enemies:['giant_brute','troll'], boss:false},
-      {id:'cz5n7',label:'Vórtice Marino',        enemies:['troll','troll','pig'], boss:false},
-      {id:'cz5n8',label:'Kraken Menor',          enemies:['giant_tank','troll'],  boss:false,miniboss:true},
-      {id:'cz5n9',label:'Señor del Abismo',      enemies:['giant_tank','troll','ice'],boss:true},
+      {id:'cz5n3',label:'Corriente Oscura',      enemies:['berserkOrc','grunt'],         boss:false},
+      {id:'cz5n4',label:'Ruinas Ahogadas',       enemies:['berserkOrc','ironGuard'],      boss:false},
+      {id:'cz5n5',label:'Fosa Abisal',           enemies:['berserkOrc','berserkOrc'],       boss:false},
+      {id:'cz5n6',label:'El Leviatán Duerme',    enemies:['coopMiniboss1','berserkOrc'], boss:false},
+      {id:'cz5n7',label:'Vórtice Marino',        enemies:['berserkOrc','berserkOrc','grunt'], boss:false},
+      {id:'cz5n8',label:'Kraken Menor',          enemies:['coopMiniboss2','berserkOrc'],  boss:false,miniboss:true},
+      {id:'cz5n9',label:'Señor del Abismo',      enemies:['coopBoss','berserkOrc','poisoner'],boss:true},
     ]
   },
   { id:'cz6', name:'💀 Ciudadela Final',   theme:4, color:'#1a0000',
     nodes:[
-      {id:'cz6n0',label:'Puerta de la Ciudadela',enemies:['corporal','knight'],   boss:false},
-      {id:'cz6n1',label:'Murallas Exteriores',   enemies:['knight','fortress'],   boss:false},
-      {id:'cz6n2',label:'Patio de Armas',        enemies:['berserker','knight'],  boss:false},
-      {id:'cz6n3',label:'Torre del Vigía',       enemies:['archer','wizard','knight'],boss:false},
-      {id:'cz6n4',label:'Mazmorra Real',         enemies:['necro','berserker'],   boss:false},
-      {id:'cz6n5',label:'Sala del Trono',        enemies:['king','fortress'],     boss:false},
-      {id:'cz6n6',label:'Guardia Real',          enemies:['king','knight','archer'],boss:false},
-      {id:'cz6n7',label:'El Último Bastión',     enemies:['giant_colossus','king'],boss:false},
-      {id:'cz6n8',label:'La Guardia Inmortal',   enemies:['giant_colossus','fortress','necro'],boss:false,miniboss:true},
-      {id:'cz6n9',label:'👑 El Gran Cerdo Cósmico',enemies:['giant_colossus','king','pyro','wizard'],boss:true},
+      {id:'cz6n0',label:'Puerta de la Ciudadela',enemies:['ironGuard','dualBlade'],   boss:false},
+      {id:'cz6n1',label:'Murallas Exteriores',   enemies:['dualBlade','ironGuard'],   boss:false},
+      {id:'cz6n2',label:'Patio de Armas',        enemies:['berserkOrc','dualBlade'],  boss:false},
+      {id:'cz6n3',label:'Torre del Vigía',       enemies:['shadowArch','curseWitch','dualBlade'],boss:false},
+      {id:'cz6n4',label:'Mazmorra Real',         enemies:['curseWitch','berserkOrc'],   boss:false},
+      {id:'cz6n5',label:'Sala del Trono',        enemies:['coopMiniboss1','ironGuard'],     boss:false},
+      {id:'cz6n6',label:'Guardia Real',          enemies:['coopMiniboss1','dualBlade','shadowArch'],boss:false},
+      {id:'cz6n7',label:'El Último Bastión',     enemies:['coopBoss','coopMiniboss1'],boss:false},
+      {id:'cz6n8',label:'La Guardia Inmortal',   enemies:['coopBoss','ironGuard','curseWitch'],boss:false,miniboss:true},
+      {id:'cz6n9',label:'👑 El Gran Cerdo Cósmico',enemies:['coopBoss','coopMiniboss1','plagueDoc','curseWitch'],boss:true},
     ]
   },
 ];
@@ -4948,7 +5004,8 @@ function startCoopNodeBattle(node){
 
   // Build enemies from node
   const scale=1+((node.zi||0)*0.08);
-  BS.enemies=(node.enemies||['pig','pig']).map(k=>buildEnemyInst(k,scale));
+  // Coop uses its own enemy pool
+  BS.enemies=(node.enemies||['grunt','grunt']).map(k=>{const e=COOP_ENEMY_POOL[k];if(!e)return buildEnemyInst(k,scale);const hp=Math.round(e.maxHp*scale);return{...e,hp,maxHp:hp,curAtk:Math.round(e.atk*scale),curDef:e.def,buffs:[]};});
   BS._node={...node,isCoopBattle:true,label:node.label||'Coop',zoneName:node.zoneName||'Coop',zoneTheme:node.theme||0};
   BS._waves=null;BS._waveIdx=0;BS._advancing=false;BS._scale=scale;
   BS.birdsActed=new Set();BS.activeIdx=0;BS.targetIdx=0;
@@ -5011,6 +5068,13 @@ function startCoopNodeBattle(node){
       const bird=BS.birds[1];if(!bird)return;
       bird.hp=Math.max(0,m.hp);
       refreshPlate(bird,'bp1');
+    }
+    if(m.type==='coop_reward'){
+      // Apply same reward to partner
+      Object.entries(m.mats||{}).forEach(([mat,n])=>{COOP_GS.materials[mat]=(COOP_GS.materials[mat]||0)+n;});
+      COOP_GS.gold=(COOP_GS.gold||0)+(m.gold||0);
+      COOP._lastReward={mats:m.mats,gold:m.gold};
+      saveCoopGS();
     }
     if(m.type==='coop_over'){
       coopBattleEnd(m.won);
@@ -5103,7 +5167,40 @@ function coopBattleEnd(won){
   BS._coopMode=false;
   coopSend({type:'coop_over',won});
   screenFlash(won?'rgba(100,220,255,.5)':'rgba(60,0,0,.8)',400);
-  if(won){spawnConfetti(60);if(BS._coopNode?.id)COOP.completed.add(BS._coopNode.id);saveCoopGS();}
+  if(won){
+    spawnConfetti(60);
+    if(BS._coopNode?.id)COOP.completed.add(BS._coopNode.id);
+    // Give materials as reward — zone-based pool, random quantity
+    const zi=BS._coopNode?.zi||0;
+    const isBoss=BS._coopNode?.boss; const isMini=BS._coopNode?.miniboss;
+    // Each zone unlocks better materials
+    const zonePools=[
+      ['wood','wood','leather'],                          // z0
+      ['wood','leather','leather','iron'],                // z1
+      ['leather','iron','iron','feather'],                // z2
+      ['iron','iron','feather','feather'],                // z3
+      ['feather','crystal','crystal','iron'],             // z4
+      ['crystal','crystal','dragonscale'],                // z5
+      ['crystal','dragonscale','dragonscale'],            // z6
+    ];
+    const pool=zonePools[Math.min(zi,6)];
+    const qty=isBoss?5+Math.floor(Math.random()*4):isMini?3+Math.floor(Math.random()*3):1+Math.floor(Math.random()*3);
+    const reward={};
+    for(let i=0;i<qty;i++){
+      const m=pool[Math.floor(Math.random()*pool.length)];
+      reward[m]=(reward[m]||0)+1;
+      COOP_GS.materials[m]=(COOP_GS.materials[m]||0)+1;
+    }
+    // Gold reward — random range per zone
+    const baseGold=15+zi*12;
+    const bonusGold=isBoss?50+Math.floor(Math.random()*50):isMini?20+Math.floor(Math.random()*20):Math.floor(Math.random()*15);
+    const goldReward=baseGold+bonusGold;
+    COOP_GS.gold=(COOP_GS.gold||0)+goldReward;
+    COOP._lastReward={mats:reward,gold:goldReward};
+    // Send reward to partner too
+    coopSend({type:'coop_reward',mats:reward,gold:goldReward});
+    saveCoopGS();
+  }
   else screenShake(8,400);
   stopLoop();
   setTimeout(()=>{
@@ -5114,8 +5211,10 @@ function coopBattleEnd(won){
     if(t)t.textContent=won?'¡VICTORIA!':'DERROTA';
     if(t)t.style.color=won?'#40d0ff':'#ff4444';
     if(ic)ic.textContent=won?'🎉':'💀';
+    const reward=COOP._lastReward;
+    const rewardStr=won&&reward?'\n+'+reward.gold+'🪙  '+Object.entries(reward.mats||{}).map(([k,v])=>v+'× '+k).join(' '):'';
     if(s)s.textContent=won
-      ?'¡Ganasteis en '+( node?.label||'el nivel')+'!'
+      ?'¡Ganasteis en '+(node?.label||'el nivel')+'!'+rewardStr
       :'Derrotados en '+(node?.label||'el nivel')+'…';
     const cv2=document.getElementById('result-cv-coop');rsCV(cv2);
     startLoop(()=>{drawSky(cv2.getContext('2d'),cv2.width,cv2.height,bgT,node?.theme||0);});
@@ -5670,6 +5769,71 @@ function showGalleryScreen(backFn){
       });
     }
 
+    else if(activeSection==='coop'){
+      // CoopPlayer sprite + coop recipes
+      items.push({type:'section',text:'🎭 El Enmascarado'});
+      items.push({
+        type:'bird',
+        drawFn:(cx,x,y,w,h)=>{
+          cx.save();cx.translate(x+w/2,y+h*.55);
+          S.coopPlayer(cx,0,0,w*.33,false);
+          if(COOP_GS.equippedArmor)drawArmorByRecipe(cx,w*.33,COOP_GS.equippedArmor,'coopPlayer');
+          if(COOP_GS.equippedWeapon)drawWeaponOnBird(cx,'coopPlayer',w*.33,COOP_GS.equippedWeapon);
+          cx.restore();
+        },
+        lines:[
+          {t:'Enmascarado',col:'#40d0ff',sz:13,bold:true},
+          {t:'Trickster',col:'rgba(255,255,255,.5)',sz:10},
+          {t:`❤${buildCoopPlayerInst().maxHp} ⚔${buildCoopPlayerInst().curAtk} 🛡${buildCoopPlayerInst().curDef}`,col:'#80ff80',sz:10},
+          {t:'✨ '+buildCoopPlayerInst().spName,col:'#cc99ff',sz:9},
+        ],
+        border:'#40d0ff',
+      });
+      // Coop weapons
+      items.push({type:'section',text:'⚔ Armas Coop'});
+      Object.values(COOP_RECIPES).filter(r=>r.type==='weapon').sort((a,b)=>a.craftTier-b.craftTier).forEach(rec=>{
+        const crafted=!!COOP_GS.craftedItems[rec.id];
+        const isEq=COOP_GS.equippedWeapon===rec.id;
+        items.push({
+          type:'weapon',
+          drawFn:(cx,x,y,w,h)=>{
+            cx.save();cx.translate(x+w/2,y+h*.5);
+            S.coopPlayer(cx,0,0,w*.28,false);
+            drawWeaponOnBird(cx,'coopPlayer',w*.28,rec.id);
+            cx.restore();
+          },
+          lines:[
+            {t:rec.icon+' '+rec.name,col:'#ffe44d',sz:10,bold:true},
+            {t:{melee:'🗡 Melé',ranged:'🏹 Distancia',explosive:'💣 Explosivo',magic:'✨ Magia'}[rec.weapType]||'',col:'rgba(255,255,255,.5)',sz:9},
+            {t:Object.entries(rec.baseEff).map(([k,v])=>'+'+v+' '+k).join(' '),col:'#80ff80',sz:8},
+            {t:isEq?'✓ Equipado':crafted?'En inv.':'Sin craftear',col:isEq?'#40d0ff':crafted?'#ffe44d':'#555',sz:9},
+          ],
+          border:isEq?'#40d0ff':crafted?'rgba(64,160,200,.8)':'rgba(64,160,200,.2)',
+        });
+      });
+      // Coop armors
+      items.push({type:'section',text:'🛡 Armaduras Coop'});
+      Object.values(COOP_RECIPES).filter(r=>r.type==='armor').sort((a,b)=>a.craftTier-b.craftTier).forEach(rec=>{
+        const crafted=!!COOP_GS.craftedItems[rec.id];
+        const isEq=COOP_GS.equippedArmor===rec.id;
+        items.push({
+          type:'armor',
+          drawFn:(cx,x,y,w,h)=>{
+            cx.save();cx.translate(x+w/2,y+h*.52);
+            S.coopPlayer(cx,0,0,w*.3,false);
+            drawArmorByRecipe(cx,w*.3,rec.id,'coopPlayer');
+            cx.restore();
+          },
+          lines:[
+            {t:rec.icon+' '+rec.name,col:'#ffe44d',sz:10,bold:true},
+            {t:'Tier '+rec.craftTier+(rec.special?' · '+rec.specialDesc:''),col:'rgba(255,255,255,.5)',sz:8},
+            {t:Object.entries(rec.baseEff).map(([k,v])=>'+'+v+' '+k).join(' '),col:'#80ff80',sz:8},
+            {t:isEq?'✓ Equipado':crafted?'En inv.':'Sin craftear',col:isEq?'#40d0ff':crafted?'#ffe44d':'#555',sz:9},
+          ],
+          border:isEq?'#40d0ff':crafted?'rgba(64,160,200,.8)':'rgba(64,160,200,.2)',
+        });
+      });
+    }
     else if(activeSection==='weapons'){
       Object.values(ALL_BIRDS).forEach(bird=>{
         items.push({type:'section',text:`⚔️ ${bird.name}`});
@@ -5835,7 +5999,7 @@ function showGalleryScreen(backFn){
     }
 
     // Tab bar (drawn on top)
-    const tabs=[{k:'birds',l:'🐦'},{k:'enemies',l:'🐷'},{k:'weapons',l:'⚔️'},{k:'armors',l:'🛡'}];
+    const tabs=[{k:'birds',l:'🐦'},{k:'enemies',l:'🐷'},{k:'weapons',l:'⚔️'},{k:'armors',l:'🛡'},{k:'coop',l:'🎭'}];
     const tw=(W-PAD_X*2)/tabs.length;
     cx.fillStyle='rgba(0,0,0,.75)';cx.fillRect(0,0,W,52);
     cx.fillStyle='rgba(200,137,31,.3)';cx.fillRect(0,50,W,2);
@@ -5846,7 +6010,7 @@ function showGalleryScreen(backFn){
       cx.font='bold 13px Lilita One,cursive';cx.textAlign='center';
       cx.fillStyle=active?'#ffe44d':'rgba(255,255,255,.6)';
       cx.fillText(tab.l,tx+tw/2,32);
-      const labels={birds:'Pájaros',enemies:'Enemigos',weapons:'Armas',armors:'Armaduras'};
+      const labels={birds:'Pájaros',enemies:'Enemigos',weapons:'Armas',armors:'Armaduras',coop:'Coop'};
       cx.font='9px Nunito,sans-serif';
       cx.fillStyle=active?'#ffe44d':'rgba(255,255,255,.4)';
       cx.fillText(labels[tab.k],tx+tw/2,46);
@@ -5867,7 +6031,7 @@ function showGalleryScreen(backFn){
     if(mx>W-90&&my<52){stopLoop();(backFn||showTitleScreen)();return;}
     // Tabs
     if(my<52){
-      const tabs=['birds','enemies','weapons','armors'];
+      const tabs=['birds','enemies','weapons','armors','coop'];
       const tw=(W-PAD_X*2)/tabs.length;
       const ti=Math.floor((mx-PAD_X)/tw);
       if(ti>=0&&ti<tabs.length&&tabs[ti]!==activeSection){
@@ -6008,6 +6172,71 @@ function showTitleScreen(){showScreen('title-screen');}
       });
     }
 
+    else if(activeSection==='coop'){
+      // CoopPlayer sprite + coop recipes
+      items.push({type:'section',text:'🎭 El Enmascarado'});
+      items.push({
+        type:'bird',
+        drawFn:(cx,x,y,w,h)=>{
+          cx.save();cx.translate(x+w/2,y+h*.55);
+          S.coopPlayer(cx,0,0,w*.33,false);
+          if(COOP_GS.equippedArmor)drawArmorByRecipe(cx,w*.33,COOP_GS.equippedArmor,'coopPlayer');
+          if(COOP_GS.equippedWeapon)drawWeaponOnBird(cx,'coopPlayer',w*.33,COOP_GS.equippedWeapon);
+          cx.restore();
+        },
+        lines:[
+          {t:'Enmascarado',col:'#40d0ff',sz:13,bold:true},
+          {t:'Trickster',col:'rgba(255,255,255,.5)',sz:10},
+          {t:`❤${buildCoopPlayerInst().maxHp} ⚔${buildCoopPlayerInst().curAtk} 🛡${buildCoopPlayerInst().curDef}`,col:'#80ff80',sz:10},
+          {t:'✨ '+buildCoopPlayerInst().spName,col:'#cc99ff',sz:9},
+        ],
+        border:'#40d0ff',
+      });
+      // Coop weapons
+      items.push({type:'section',text:'⚔ Armas Coop'});
+      Object.values(COOP_RECIPES).filter(r=>r.type==='weapon').sort((a,b)=>a.craftTier-b.craftTier).forEach(rec=>{
+        const crafted=!!COOP_GS.craftedItems[rec.id];
+        const isEq=COOP_GS.equippedWeapon===rec.id;
+        items.push({
+          type:'weapon',
+          drawFn:(cx,x,y,w,h)=>{
+            cx.save();cx.translate(x+w/2,y+h*.5);
+            S.coopPlayer(cx,0,0,w*.28,false);
+            drawWeaponOnBird(cx,'coopPlayer',w*.28,rec.id);
+            cx.restore();
+          },
+          lines:[
+            {t:rec.icon+' '+rec.name,col:'#ffe44d',sz:10,bold:true},
+            {t:{melee:'🗡 Melé',ranged:'🏹 Distancia',explosive:'💣 Explosivo',magic:'✨ Magia'}[rec.weapType]||'',col:'rgba(255,255,255,.5)',sz:9},
+            {t:Object.entries(rec.baseEff).map(([k,v])=>'+'+v+' '+k).join(' '),col:'#80ff80',sz:8},
+            {t:isEq?'✓ Equipado':crafted?'En inv.':'Sin craftear',col:isEq?'#40d0ff':crafted?'#ffe44d':'#555',sz:9},
+          ],
+          border:isEq?'#40d0ff':crafted?'rgba(64,160,200,.8)':'rgba(64,160,200,.2)',
+        });
+      });
+      // Coop armors
+      items.push({type:'section',text:'🛡 Armaduras Coop'});
+      Object.values(COOP_RECIPES).filter(r=>r.type==='armor').sort((a,b)=>a.craftTier-b.craftTier).forEach(rec=>{
+        const crafted=!!COOP_GS.craftedItems[rec.id];
+        const isEq=COOP_GS.equippedArmor===rec.id;
+        items.push({
+          type:'armor',
+          drawFn:(cx,x,y,w,h)=>{
+            cx.save();cx.translate(x+w/2,y+h*.52);
+            S.coopPlayer(cx,0,0,w*.3,false);
+            drawArmorByRecipe(cx,w*.3,rec.id,'coopPlayer');
+            cx.restore();
+          },
+          lines:[
+            {t:rec.icon+' '+rec.name,col:'#ffe44d',sz:10,bold:true},
+            {t:'Tier '+rec.craftTier+(rec.special?' · '+rec.specialDesc:''),col:'rgba(255,255,255,.5)',sz:8},
+            {t:Object.entries(rec.baseEff).map(([k,v])=>'+'+v+' '+k).join(' '),col:'#80ff80',sz:8},
+            {t:isEq?'✓ Equipado':crafted?'En inv.':'Sin craftear',col:isEq?'#40d0ff':crafted?'#ffe44d':'#555',sz:9},
+          ],
+          border:isEq?'#40d0ff':crafted?'rgba(64,160,200,.8)':'rgba(64,160,200,.2)',
+        });
+      });
+    }
     else if(activeSection==='weapons'){
       Object.values(ALL_BIRDS).forEach(bird=>{
         grid.appendChild(makeSection(`⚔️ ${bird.name}`));
